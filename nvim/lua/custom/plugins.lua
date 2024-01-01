@@ -1,5 +1,8 @@
 local plugins = {
   { "nvim-lua/plenary.nvim" },
+  {"ActivityWatch/aw-watcher-vim"},
+  {'christoomey/vim-tmux-navigator',
+    lazy=false, },
   {
     "rcarriga/nvim-dap-ui",
     event = "VeryLazy",
@@ -20,6 +23,31 @@ local plugins = {
     end,
   },
   {
+  "mbbill/undotree",
+  dependencies = "nvim-lua/plenary.nvim",
+  -- config = true,
+  keys = { -- load the plugin only when using it's keybinding:
+    { "<leader>u", "<cmd>lua require('undotree').toggle()<cr>" },
+  },
+   config=function ()
+      require('undotree').setup()
+    end
+
+  },
+  {
+    "windwp/nvim-ts-autotag",
+    ft={
+      "javascript",
+      "typescript",
+      "javascriptreact",
+      "typescriptreact",
+      "html",
+    },
+    config=function ()
+     require("nvim-ts-autotag").setup()
+    end
+  },
+  {
     "jay-babu/mason-nvim-dap.nvim",
     event = "VeryLazy",
     dependencies = {
@@ -37,6 +65,17 @@ local plugins = {
     end
   },
   {
+    "mfussenegger/nvim-dap-python",
+    ft="python",
+    dependencies = {
+      "mfussenegger/nvim-dap",
+    },
+    config = function (_, opts)
+      local path = "~/.local/share/nvim/mason/packages/debugpy/venv/bin/python"
+      require("dap-python").setup(path)
+    end
+  },
+  {
     "neovim/nvim-lspconfig",
     config = function ()
       require "plugins.configs.lspconfig"
@@ -44,18 +83,31 @@ local plugins = {
     end,
   },
   {
-    "jose-elias-alvarez/null-ls.nvim",
+    "nvimtools/none-ls.nvim",
     event = "VeryLazy",
     opts = function ()
       return require "custom.configs.null-ls"
     end,
   },
+  -- {
+  --   "jose-elias-alvarez/null-ls.nvim",
+  --   event = "VeryLazy",
+  --   opts = function ()
+  --     return require "custom.configs.null-ls"
+  --   end,
+  -- },
   {
     "williamboman/mason.nvim",
     opts = {
       ensure_installed = {
         "typescript-language-server",
+        "tailwindcss-language-server",
         "eslint-lsp",
+        "pyright",
+        "mypy",
+        "ruff",
+        "black",
+        "debugpy",
       }
     }
   },

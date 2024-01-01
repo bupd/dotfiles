@@ -2,8 +2,8 @@ local configs = require("plugins.configs.lspconfig")
 local on_attach = configs.on_attach
 local capabilities = configs.capabilities
 
-local lspconfig = require "lspconfig"
-local servers = { "html", "cssls", "clangd", "astro",}
+local lspconfig = require("lspconfig")
+local servers = { "html", "clangd", "astro", "tsserver", "pyright", "tailwindcss", "eslint"}
 
 for _, lsp in ipairs(servers) do
   lspconfig[lsp].setup {
@@ -12,12 +12,12 @@ for _, lsp in ipairs(servers) do
   }
 end
 
-lspconfig.tsserver.setup {
-  on_attach = on_attach,
-  capabilities = capabilities,
-  init_options = {
-    prefrences = {
-      disableSuggestions = false,
-    }
-  }
-}
+-- lspconfig.tsserver.setup {
+--   on_attach = on_attach,
+--   capabilities = capabilities,
+--   init_options = {
+--     prefrences = {
+--       disableSuggestions = false,
+--     }
+--   }
+-- }
