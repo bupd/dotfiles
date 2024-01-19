@@ -1,0 +1,9 @@
+#!/bin/sh
+
+pkill brave
+pkill chrome
+pkill electron
+
+echo "Killed programs."
+
+
