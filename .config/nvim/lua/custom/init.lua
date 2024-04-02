@@ -8,3 +8,5 @@ vim.keymap.set('n', '<leader>u', vim.cmd.UndotreeToggle)
 
 vim.cmd('set guicursor=n-v-c:block-Cursor-blinkwait1000-blinkon500-blinkoff300')
 
+-- bupd 
+
