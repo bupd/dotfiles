@@ -109,6 +109,7 @@ source /usr/share/nvm/init-nvm.sh
 # export PAGER="most"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 #
+bindkey -s '^F' 'exec sessionizer^M'
 
 sound() {
   for s in $@; do
