@@ -198,8 +198,12 @@ bindsym $mod+r mode "resize"
 # Start i3bar to display a workspace bar (plus the system information i3status
 # finds out, if available)
 bar {
-	font pango:DejaVu Sans Mono 10
-	status_command i3status
+	font pango:DejaVu Sans Mono 8
+	status_command i3status -c
+
+#   cpu_usage {
+#   format = "Cpu: %usage"
+# }
 }
 
 assign [class="Xfce4-terminal"] $ws1
@@ -210,5 +214,8 @@ assign [class="obs"] $ws9
 
 exec xfce4-terminal
 exec brave
+exec_always clipmenud
 exec obsidian
-
+exec google-chrome-stable 
+exec aw-qt
+exec_always source /usr/share/nvm/init-nvm.sh

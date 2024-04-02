@@ -106,4 +106,24 @@ alias gs="git status"
 export PATH="$HOME/.local/bin/":$PATH
 PATH=$PATH:$HOME/bin
 source /usr/share/nvm/init-nvm.sh
+# export PAGER="most"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
+#
+
+sound() {
+  for s in $@; do
+    paplay $s
+  done
+}
+
+alert() {
+  sound /home/bupd/My-Files/beep-01a.mp3
+}
+
+export LESS_TERMCAP_mb=$'\e[1;32m'
+export LESS_TERMCAP_md=$'\e[1;32m'
+export LESS_TERMCAP_me=$'\e[0m'
+export LESS_TERMCAP_se=$'\e[0m'
+export LESS_TERMCAP_so=$'\e[01;33m'
+export LESS_TERMCAP_ue=$'\e[0m'
+export LESS_TERMCAP_us=$'\e[1;4;31m'
