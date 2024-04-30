@@ -103,6 +103,7 @@ alias ta="tmux a"
 alias t="tmux"
 alias c="clear"
 alias gs="git status"
+alias gfp="git fetch && git pull"
 export PATH="$HOME/.local/bin/":$PATH
 PATH=$PATH:$HOME/bin
 source /usr/share/nvm/init-nvm.sh
