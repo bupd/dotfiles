@@ -56,6 +56,7 @@ local plugins = {
         "typescript-language-server",
         "tailwindcss-language-server",
         "astro",
+        "gopls",
         "eslint-lsp",
         "pyright",
         "mypy",
