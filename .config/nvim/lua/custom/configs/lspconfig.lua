@@ -13,6 +13,9 @@ for _, lsp in ipairs(servers) do
       settings = {
         gopls = {
           usePlaceholders = true,  -- Set placeholders to true for gopls
+          analyses = {
+            unusedParams = true,
+          },
         }
       }
     }
