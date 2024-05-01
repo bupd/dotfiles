@@ -6,10 +6,34 @@ local lspconfig = require("lspconfig")
 local servers = { "html", "clangd", "astro", "tsserver", "pyright","gopls", "tailwindcss"}
 
 for _, lsp in ipairs(servers) do
-  lspconfig[lsp].setup {
-    on_attach = on_attach,
-    capabilities = capabilities,
-  }
+ if lsp == "gopls" then
+    lspconfig[lsp].setup {
+      on_attach = on_attach,
+      capabilities = capabilities,
+      settings = {
+        gopls = {
+          usePlaceholders = true,  -- Set placeholders to true for gopls
+        }
+      }
+    }
+  elseif lsp == "tsserver" then
+    lspconfig[lsp].setup {
+      on_attach = on_attach,
+      capabilities = capabilities,
+      settings = {
+        tsserver = {
+          suggest = {
+            completeFunctionCalls = true,
+          }
+        }
+      }
+    }
+  else
+    lspconfig[lsp].setup {
+      on_attach = on_attach,
+      capabilities = capabilities,
+    }
+  end
 end
 
 -- lspconfig.tsserver.setup {
