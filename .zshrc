@@ -131,3 +131,4 @@ export LESS_TERMCAP_ue=$'\e[0m'
 export LESS_TERMCAP_us=$'\e[1;4;31m'
 alias lz='lazygit'
 alias phone='u0_a323@192.168.1.127 -p8022'
+alias totalHours="find ./ -name '*.mp4' -exec exiftool -S -n -Duration {} \; | awk -F': ' '{sum += \$2} END {mins = sum / 3600; print mins \" hours\"}'"
