@@ -1,3 +1,1 @@
-screenkey &
 ./pactl.sh
-
