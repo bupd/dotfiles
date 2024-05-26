@@ -14,7 +14,7 @@ local opts = {
         group = augroup,
         buffer = bufnr,
       })
-      vim.api.nvim_set_keymap("n", "<Space>", "<cmd>lua vim.lsp.buf.format()<CR>", { noremap = true })
+      vim.api.nvim_set_keymap("n", "<Space>fm", "<cmd>lua vim.lsp.buf.format()<CR>", { noremap = true })
     end
   end,
 }
