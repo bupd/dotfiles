@@ -1,0 +1,41 @@
+lastupdatecheck: 0
+recentrepos:
+    - /home/bupd/dotfiles
+    - /home/bupd/code/Freelance/dhiyapets
+    - /home/bupd/code/OSS/harborWT/batch-process
+    - /home/bupd/code/OSS/harborWT/project-view
+    - /home/bupd/code/OSS/asyncapi-website
+    - /home/bupd/code/OSS/zulip-oss
+    - /home/bupd/code/Freelance/apm
+    - /home/bupd/code/learn/DSA
+    - /home/bupd/code/OSS/harbor-cli
+    - /home/bupd/code/pp/git-donkey
+    - /home/bupd/code/learn/java
+    - /home/bupd/code/learn/Python/chat
+    - /home/bupd/code/learn/DSA/js/theprime
+    - /home/bupd/code/learn/Python
+    - /home/bupd/code/learn/Python/culinarynexa
+    - /home/bupd/code/pp/goauth
+    - /home/bupd/code/OSS/GSoc
+    - /home/bupd/code/pp/testing
+    - /home/bupd/code/learn/ip-finder
+    - /home/bupd/code/pp/cobra
+    - /home/bupd/code/pp/tossacoin
+    - /home/bupd/code/pp/dhibot
+    - /home/bupd/code/pp/hotelmanager
+    - /home/bupd/code/Freelance/wpblog
+    - /home/bupd/code/Work/px/sidform
+    - /home/bupd/code/OSS/jaeger-ui
+    - /home/bupd/code/Work/px/sidform-admin
+    - /home/bupd/code/webcrawler
+startuppopupversion: 5
+lastversion: 0.42.0
+customcommandshistory:
+    - git push
+hidecommandlog: false
+ignorewhitespaceindiffview: false
+diffcontextsize: 3
+localbranchsortorder: recency
+remotebranchsortorder: alphabetical
+gitlogorder: topo-order
+gitlogshowgraph: always
