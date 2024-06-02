@@ -2,10 +2,17 @@ lastupdatecheck: 0
 recentrepos:
     - /home/bupd/dotfiles
     - /home/bupd/code/Freelance/dhiyapets
-    - /home/bupd/code/OSS/harborWT/batch-process
+    - /home/bupd/code/OSS/harborWT/quota
+    - /home/bupd/code/OSS/harborWT/registry-create
+    - /home/bupd/code/OSS/harborWT/member
+    - /home/bupd/code/OSS/harborWT/documentation
+    - /home/bupd/code/OSS/harborWT/statistics
     - /home/bupd/code/OSS/harborWT/project-view
-    - /home/bupd/code/OSS/asyncapi-website
+    - /home/bupd/code/learn/Python
     - /home/bupd/code/OSS/zulip-oss
+    - /home/bupd/code/OSS/GSoc
+    - /home/bupd/code/OSS/harborWT/batch-process
+    - /home/bupd/code/OSS/asyncapi-website
     - /home/bupd/code/Freelance/apm
     - /home/bupd/code/learn/DSA
     - /home/bupd/code/OSS/harbor-cli
@@ -13,10 +20,8 @@ recentrepos:
     - /home/bupd/code/learn/java
     - /home/bupd/code/learn/Python/chat
     - /home/bupd/code/learn/DSA/js/theprime
-    - /home/bupd/code/learn/Python
     - /home/bupd/code/learn/Python/culinarynexa
     - /home/bupd/code/pp/goauth
-    - /home/bupd/code/OSS/GSoc
     - /home/bupd/code/pp/testing
     - /home/bupd/code/learn/ip-finder
     - /home/bupd/code/pp/cobra
