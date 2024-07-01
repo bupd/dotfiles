@@ -1,23 +1,34 @@
 lastupdatecheck: 0
 recentrepos:
     - /home/bupd/dotfiles
+    - /home/bupd/code/aoc
+    - /home/bupd/code/OSS/harborSa/harbor-satellite
     - /home/bupd/code/Freelance/dhiyapets
+    - /home/bupd/code/OSS/harborSatellite/pr
+    - /home/bupd/code/OSS/harborSatellite/e2e
+    - /home/bupd/code/OSS/harborSatellite/dagger
+    - /home/bupd/code/learn/DSA
+    - /home/bupd/code/Freelance/apm
+    - /home/bupd/code/learn/java
+    - /home/bupd/code/OSS/member
+    - /home/bupd/code/OSS/harborWT/configuration
+    - /home/bupd/code/OSS/harborWT/ldap
+    - /home/bupd/code/OSS/harborWT/statistics
+    - /home/bupd/code/OSS/harborWT/linting
+    - /home/bupd/code/pp/git-donkey
+    - /home/bupd/code/OSS/harborWT/robots
+    - /home/bupd/code/OSS/harborWT/audit
     - /home/bupd/code/OSS/harborWT/quota
     - /home/bupd/code/OSS/harborWT/registry-create
     - /home/bupd/code/OSS/harborWT/member
     - /home/bupd/code/OSS/harborWT/documentation
-    - /home/bupd/code/OSS/harborWT/statistics
     - /home/bupd/code/OSS/harborWT/project-view
     - /home/bupd/code/learn/Python
     - /home/bupd/code/OSS/zulip-oss
     - /home/bupd/code/OSS/GSoc
     - /home/bupd/code/OSS/harborWT/batch-process
     - /home/bupd/code/OSS/asyncapi-website
-    - /home/bupd/code/Freelance/apm
-    - /home/bupd/code/learn/DSA
     - /home/bupd/code/OSS/harbor-cli
-    - /home/bupd/code/pp/git-donkey
-    - /home/bupd/code/learn/java
     - /home/bupd/code/learn/Python/chat
     - /home/bupd/code/learn/DSA/js/theprime
     - /home/bupd/code/learn/Python/culinarynexa
@@ -36,6 +47,7 @@ recentrepos:
 startuppopupversion: 5
 lastversion: 0.42.0
 customcommandshistory:
+    - q
     - git push
 hidecommandlog: false
 ignorewhitespaceindiffview: false
