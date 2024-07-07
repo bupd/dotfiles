@@ -217,6 +217,6 @@ exec xfce4-terminal
 exec brave
 exec_always clipmenud
 exec obsidian
-exec google-chrome-stable 
 exec aw-qt
+exec firefox
 exec_always source /usr/share/nvm/init-nvm.sh
