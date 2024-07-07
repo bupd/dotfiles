@@ -1,8 +1,14 @@
 lastupdatecheck: 0
 recentrepos:
     - /home/bupd/dotfiles
-    - /home/bupd/code/aoc
+    - /home/bupd/obsidian
+    - /home/bupd/code/pp/threesync
+    - /home/bupd/code/OSS/commProposal
+    - /home/bupd/code/OSS/harborSatellite/simplify
+    - /home/bupd/code/OSS/harborSatellite/refactor
+    - /home/bupd/code/OSS/harborSatellite/main
     - /home/bupd/code/OSS/harborSa/harbor-satellite
+    - /home/bupd/code/aoc
     - /home/bupd/code/Freelance/dhiyapets
     - /home/bupd/code/OSS/harborSatellite/pr
     - /home/bupd/code/OSS/harborSatellite/e2e
