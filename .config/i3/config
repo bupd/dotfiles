@@ -214,7 +214,6 @@ assign [class="obsidian"] $ws10
 assign [class="obs"] $ws9
 
 exec xfce4-terminal
-exec brave
 exec_always clipmenud
 exec obsidian
 exec aw-qt
