@@ -1,0 +1,36 @@
+__preset__:
+  overrides:
+    tv_show_directory: "/mnt/Games/ytdl/tv_shows"
+    output_options:
+      output_directory: "/mnt/Games/ytdl/tv_shows"
+    # music_directory: "/music"
+    date_range: "1months"
+    ytdl_options:
+      # Ignore any download related errors and continue
+      ignoreerrors: True
+      # Stop downloading additional metadata/videos if it
+      # exists in your download archive
+      break_on_existing: True
+      # Path to your YouTube co
+
+# Can choose between:
+#  - Plex TV Show by Date:
+#  - Jellyfin TV Show by Date:
+#  - Kodi TV Show by Date:
+#
+Jellyfin TV Show by Date:
+
+  Only Recent | Max 480p | = Tech | = TV-14:
+    "DOAutonomy": "https://www.youtube.com/@dreamsofautonomy"
+    "Cold Fusion": "https://www.youtube.com/@ColdFusion"
+
+  # = Documentaries:
+  #   "DOAutonomy": "https://www.youtube.com/@dreamsofcode"
+#
+# YouTube Releases:
+#   = Jazz:  # Sets genre tag to "Jazz"
+#     "Thelonious Monk": "https://www.youtube.com/@theloniousmonk3870/releases"
+#
+# YouTube Full Albums:
+#   = Lofi:
+#     "Game Chops": "https://www.youtube.com/playlist?list=PLBsm_SagFMmdWnCnrNtLjA9kzfrRkto4i"
