@@ -5,7 +5,6 @@ usermodmap=$HOME/.Xmodmap
 sysresources=/etc/X11/xinit/.Xresources
 sysmodmap=/etc/X11/xinit/.Xmodmap
 
-setxkbmap -option "ctrl:swapcaps" &
 # merge in defaults and keymaps
 
 if [ -f $sysresources ]; then
@@ -54,4 +53,3 @@ xclock -geometry 50x50-1+1 &
 xterm -geometry 80x50+494+51 &
 xterm -geometry 80x20+494-0 &
 exec xterm -geometry 80x66+0+0 -name login
-
