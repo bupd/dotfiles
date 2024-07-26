@@ -226,4 +226,4 @@ exec obsidian
 exec aw-qt
 exec firefox
 # start keyboard remap
-exec sudo xremap ~/.config/xremap/config.yml &
+exec_always sudo xremap ~/.config/xremap/config.yml &
