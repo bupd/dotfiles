@@ -223,7 +223,6 @@ exec xfce4-terminal
 exec_always clipmenud
 exec_always source /usr/share/nvm/init-nvm.sh
 exec obsidian
-exec aw-qt
 exec firefox
 # start keyboard remap
 exec_always sudo xremap ~/.config/xremap/config.yml &
