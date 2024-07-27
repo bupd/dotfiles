@@ -227,3 +227,4 @@ exec aw-qt
 exec firefox
 # start keyboard remap
 exec_always sudo xremap ~/.config/xremap/config.yml &
+exec digital-wellbeing
