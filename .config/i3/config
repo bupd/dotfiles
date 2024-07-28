@@ -226,4 +226,4 @@ exec obsidian
 exec firefox
 # start keyboard remap
 exec_always sudo xremap ~/.config/xremap/config.yml &
-exec digital-wellbeing
+exec_always ~/go/bin/digital-wellbeing &
