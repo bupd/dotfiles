@@ -1,7 +1,12 @@
 modmap:
   - name: main remaps
     remap:
+      Ctrl_L: CapsLock
       CapsLock:
         held: leftctrl
         alone: esc
-        alone_timeout_millis: 100
+        alone_timeout_millis: 150
+
+  - name: Global
+    remap:
+      Ctrl_L: CapsLock
