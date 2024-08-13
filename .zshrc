@@ -96,6 +96,10 @@ source $ZSH/oh-my-zsh.sh
 # users are encouraged to define aliases within the ZSH_CUSTOM folder.
 # For a full list of active aliases, run `alias`.
 #
+
+# Set up fzf key bindings and fuzzy completion
+source <(fzf --zsh)
+
 # Example aliases
 # alias zshconfig="mate ~/.zshrc"
 alias :q="exit"
