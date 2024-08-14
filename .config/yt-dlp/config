@@ -1,8 +1,8 @@
---merge-output-format mp4
+# --merge-output-format mp4
 # --sponsorblock-remove sponsor,selfpromo,interaction
 # --no-mtime
 # --no-abort-on-error
 #--skip-playlist-after-errors 20
 # --playlist-reverse
--S "+height:1080" -f "bv*"
--P "/storage/E65A-C7E4/youtube/"
+# -S "+height:1080" -f "bv*"
+-P "/home/bupd/Downloads/youtube"
