@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# Initialize total duration in milliseconds
+total_duration=0
+
+# Function to recursively find all video files and calculate their duration
+calculate_duration() {
+    for file in "$1"/*; do
+        if [ -d "$file" ]; then
+            # If it's a directory, call the function recursively
+            calculate_duration "$file"
+        elif [ -f "$file" ]; then
+            # Check if the file is a video (by extension)
+            if [[ "$file" == *.mp4 || "$file" == *.mkv || "$file" == *.webm || "$file" == *.avi || "$file" == *.mov ]]; then
+                # Get the duration of the video in milliseconds
+                duration=$(mediainfo --Output="General;%Duration%" "$file")
+                
+                # Add the duration to the total
+                total_duration=$((total_duration + duration))
+            fi
+        fi
+    done
+}
+
+# Check if the directory is provided
+if [ -z "$1" ]; then
+    echo "Please provide a directory."
+    exit 1
+fi
+
+# Call the function with the provided directory
+calculate_duration "$1"
+
+# Convert total duration from milliseconds to minutes and hours
+total_seconds=$((total_duration / 1000))
+total_minutes=$((total_seconds / 60))
+total_hours=$((total_minutes / 60))
+remaining_minutes=$((total_minutes % 60))
+
+# Output the result
+echo "Total video duration: $total_hours hours and $remaining_minutes minutes"
