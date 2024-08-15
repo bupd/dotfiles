@@ -112,7 +112,8 @@ alias gs="git status"
 alias gfp="git fetch && git pull"
 alias lz="lazygit"
 alias phone='u0_a323@192.168.1.127 -p8022'
-alias watchtime="find ./ -name '*.mp4' -exec exiftool -S -n -Duration {} \; | awk -F': ' '{sum += \$2} END {mins = sum / 3600; print mins \" hours\"}'"
+# alias watchtime='find ./ -name "*.mp4" -exec exiftool -S -n -Duration {} \; | awk -F": " '"'"'{sum += $2} END {hours = int(sum / 3600); mins = int((sum % 3600) / 60); print hours " hours, " mins " minutes"}'"'"
+# alias watchtimes='find ./ -name "*.webm" -exec exiftool -S -n -Duration {} \; | awk -F": " '"'"'{sum += $2} END {hours = int(sum / 3600); mins = int((sum % 3600) / 60); print hours " hours, " mins " minutes"}'"'"
 alias cacheclr="yes | pacrmorphans && yes | yaclr"
 
 export PATH="$HOME/.local/bin/":$PATH
