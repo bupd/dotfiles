@@ -1,0 +1,59 @@
+#!/bin/bash
+
+# Define the MAC address of the device to connect to
+DEVICE="80:EF:A9:DF:79:96"
+
+# Remove existing pairing
+echo "Removing existing pairing for 80:EF:A9:DF:79:96..."
+bluetoothctl -- remove "80:EF:A9:DF:79:96" || echo "Failed to remove 80:EF:A9:DF:79:96."
+
+# Function to create the expect script for Bluetooth interactions
+create_expect_script() {
+    cat <<EOF
+#!/usr/bin/expect -f
+
+set timeout 60
+
+proc connect_device {device} {
+    spawn bluetoothctl
+    expect "Agent registered"
+    send -- "scan on\r"
+    expect "Device 80:EF:A9:DF:79:96"
+    send -- "pair 80:EF:A9:DF:79:96\r"
+    expect {
+        "Pairing successful" {
+            send -- "connect 80:EF:A9:DF:79:96\r"
+            expect "Connection successful"
+            send -- "trust 80:EF:A9:DF:79:96\r"
+            expect "trust succeeded"
+            send -- "exit\r"
+            expect eof
+        }
+        "Failed to pair: org.bluez.Error.AlreadyExists" {
+            send -- "connect 80:EF:A9:DF:79:96\r"
+            expect "Connection successful"
+            send -- "trust 80:EF:A9:DF:79:96\r"
+            expect "trust succeeded"
+            send -- "exit\r"
+            expect eof
+        }
+    }
+}
+
+# Connect to the specified device
+connect_device "$env(DEVICE)"
+EOF
+}
+
+# Save the expect script to a temporary file
+tmp_expect_script=$(mktemp)
+create_expect_script > "$tmp_expect_script"
+chmod +x "$tmp_expect_script"
+
+# Run the expect script
+DEVICE="80:EF:A9:DF:79:96" "$tmp_expect_script"
+
+# Clean up the temporary file
+rm -f "$tmp_expect_script"
+
+echo "Bluetooth device management complete."
