@@ -102,18 +102,24 @@ source <(fzf --zsh)
 
 # Example aliases
 # alias zshconfig="mate ~/.zshrc"
+# alias ohmyzsh="mate ~/.oh-my-zsh"
+#
 alias :q="exit"
 alias ta="tmux a"
 alias t="tmux"
 alias c="clear"
 alias gs="git status"
 alias gfp="git fetch && git pull"
+alias lz="lazygit"
+alias phone='u0_a323@192.168.1.127 -p8022'
+alias watchtime="find ./ -name '*.mp4' -exec exiftool -S -n -Duration {} \; | awk -F': ' '{sum += \$2} END {mins = sum / 3600; print mins \" hours\"}'"
+alias cacheclr="yes | pacrmorphans && yes | yaclr"
+
 export PATH="$HOME/.local/bin/":$PATH
 PATH=$PATH:$HOME/bin
 source /usr/share/nvm/init-nvm.sh
 # export PAGER="most"
-# alias ohmyzsh="mate ~/.oh-my-zsh"
-#
+
 bindkey -s '^F' 'exec sessionizer^M'
 
 sound() {
@@ -133,9 +139,6 @@ export LESS_TERMCAP_se=$'\e[0m'
 export LESS_TERMCAP_so=$'\e[01;33m'
 export LESS_TERMCAP_ue=$'\e[0m'
 export LESS_TERMCAP_us=$'\e[1;4;31m'
-alias lz='lazygit'
-alias phone='u0_a323@192.168.1.127 -p8022'
-alias totalHours="find ./ -name '*.mp4' -exec exiftool -S -n -Duration {} \; | awk -F': ' '{sum += \$2} END {mins = sum / 3600; print mins \" hours\"}'"
 
 # GOPATH from arch community
 export PATH="$PATH:$(go env GOBIN):$(go env GOPATH)/bin"
