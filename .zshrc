@@ -111,7 +111,7 @@ alias c="clear"
 alias gs="git status"
 alias gfp="git fetch && git pull"
 alias lz="lazygit"
-alias phone='u0_a323@192.168.1.127 -p8022'
+alias phone="cd /run/user/1000/gvfs/sftp:host=192.168.1.127,port=8022/storage/E65A-C7E4/"
 # alias watchtime='find ./ -name "*.mp4" -exec exiftool -S -n -Duration {} \; | awk -F": " '"'"'{sum += $2} END {hours = int(sum / 3600); mins = int((sum % 3600) / 60); print hours " hours, " mins " minutes"}'"'"
 # alias watchtimes='find ./ -name "*.webm" -exec exiftool -S -n -Duration {} \; | awk -F": " '"'"'{sum += $2} END {hours = int(sum / 3600); mins = int((sum % 3600) / 60); print hours " hours, " mins " minutes"}'"'"
 alias cacheclr="yes | pacrmorphans && yes | yaclr"
