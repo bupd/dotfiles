@@ -6,7 +6,7 @@ local lspconfig = require("lspconfig")
 local servers = { "html", "clangd", "astro", "tsserver", "pyright","gopls", "tailwindcss"}
 
 for _, lsp in ipairs(servers) do
- if lsp == "gopls" then
+  if lsp == "gopls" then
     lspconfig[lsp].setup {
       on_attach = on_attach,
       capabilities = capabilities,
