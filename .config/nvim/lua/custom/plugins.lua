@@ -166,6 +166,15 @@ local plugins = {
     config = function (_)
       require "custom.harpoon"
     end
+  },
+
+  -- nvim dap 
+  {
+    "mfussenegger/nvim-dap",
+  },
+  {
+    "mfussenegger/nvim-jdtls",
   }
+
 }
 return plugins
