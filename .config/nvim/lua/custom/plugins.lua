@@ -3,6 +3,8 @@ local plugins = {
   {"ActivityWatch/aw-watcher-vim"},
   {'christoomey/vim-tmux-navigator',
     lazy=false, },
+  {'lewis6991/gitsigns.nvim',
+    lazy=false, },
   {
     "mbbill/undotree",
     lazy = false,
@@ -157,7 +159,6 @@ local plugins = {
       vim.cmd [[silent! GoInstallDeps]]
     end,
 },
-
   {
     "ThePrimeagen/harpoon",
     event = "VeryLazy",
