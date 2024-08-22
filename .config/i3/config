@@ -220,6 +220,7 @@ assign [class="Google-chrome"] $ws3
 assign [class="whatsapp-electron"] $ws4
 assign [class="obsidian"] $ws10
 assign [class="obs"] $ws9
+assign [class="slack"] $ws8
 
 bindsym $mod+Control+1 [class="obsidian"] move workspace 1; workspace 1
 bindsym $mod+Control+2 [class="obsidian"] move workspace 2; workspace 2
