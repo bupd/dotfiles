@@ -214,13 +214,15 @@ bar {
 # }
 }
 
+# xprop to get the window name
 assign [class="Xfce4-terminal"] $ws1
 assign [class="Brave-browser"] $ws2
 assign [class="Google-chrome"] $ws3
 assign [class="whatsapp-electron"] $ws4
 assign [class="obsidian"] $ws10
 assign [class="obs"] $ws9
-assign [class="slack"] $ws8
+assign [class="Spotify"] $ws7
+assign [class="Slack"] $ws8
 
 bindsym $mod+Control+1 [class="obsidian"] move workspace 1; workspace 1
 bindsym $mod+Control+2 [class="obsidian"] move workspace 2; workspace 2
@@ -233,6 +235,8 @@ exec_always clipmenud
 exec_always source /usr/share/nvm/init-nvm.sh
 exec obsidian
 exec firefox
+exec env LD_PRELOAD=/usr/lib/spotify-adblock.so spotify &
+
 # start keyboard remap
 exec_always sudo xremap ~/.config/xremap/config.yml &
 exec_always ~/go/bin/digital-wellbeing &
