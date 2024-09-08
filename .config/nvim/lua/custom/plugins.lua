@@ -63,7 +63,7 @@ local plugins = {
 
   {"williamboman/mason-lspconfig.nvim"},
 
-  -- leetcode 
+  -- leetcode
   {
     "kawre/leetcode.nvim",
     build = ":TSUpdate html",
@@ -75,8 +75,9 @@ local plugins = {
       "nvim-treesitter/nvim-treesitter",
       "rcarriga/nvim-notify",
       "nvim-tree/nvim-web-devicons",
-    }, lazy=true,
-    event = "VeryLazy",
+    },
+    lazy=false,
+    -- event = "VeryLazy",
     opts = {
       ---@type string
       arg = "leetcode.nvim",
@@ -168,7 +169,7 @@ local plugins = {
     end
   },
 
-  -- nvim dap 
+  -- nvim dap
   {
     "mfussenegger/nvim-dap",
   },
