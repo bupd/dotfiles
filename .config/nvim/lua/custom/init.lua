@@ -12,5 +12,12 @@ vim.api.nvim_create_autocmd({ "BufWritePre" }, {
   command = [[%s/\s\+$//e]],
 })
 
+-- Auto-format the file by running gg=G before every write
+vim.api.nvim_create_autocmd({ "BufWritePre" }, {
+  pattern = { "*" },
+  callback = function()
+    vim.cmd("normal! gg=G")  -- Run gg=G to format the entire file
+  end,
+})
 -- bupd
 
