@@ -6,6 +6,8 @@ required_programs=(
     "git"
     "i3"
     "i3status"
+    "fzf"
+    "tmux"
     "nvim"
     "picom"
     "pactl"
