@@ -1,3 +1,5 @@
+
+![Header](https://github.com/user-attachments/assets/22c7f4ca-db1c-4ada-8ede-5f2e252fe87e)
 <h1 align="center"> Dotfiles</h1>
 
 This repository contains my personal dotfiles managed using [GNU Stow](https://www.gnu.org/software/stow/manual/stow.html). It includes configuration files for various programs and utilities that I use. The goal is to make it easy to manage and synchronize these files across different systems.
