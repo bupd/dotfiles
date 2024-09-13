@@ -93,7 +93,7 @@ alias cacheclr="yes | pacrmorphans && yes | yaclr"
 
 export PATH="$HOME/.local/bin/":$PATH
 PATH=$PATH:$HOME/bin
-source /usr/share/nvm/init-nvm.sh
+# source /usr/share/nvm/init-nvm.sh
 
 export LESS_TERMCAP_mb=$'\e[1;32m'
 export LESS_TERMCAP_md=$'\e[1;32m'
