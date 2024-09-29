@@ -52,6 +52,7 @@ bindkey '^[w' kill-region
 bindkey -s '^F' 'exec sessionizer^M'
 bindkey '^[[1;5C' forward-word
 bindkey '^[[1;5D' backward-word
+bindkey '^[[3;5~' kill-word
 
 # History
 HISTSIZE=100000
@@ -79,6 +80,8 @@ zstyle ':fzf-tab:complete:cd:*' fzf-preview 'ls --color $realpath'
 alias ls='ls --color'
 alias vim='nvim'
 alias ..='cd ..'
+alias ...='cd ../..'
+alias l='ls -al'
 # alias c=''
 alias :q="exit"
 alias ta="tmux a"
