@@ -6,11 +6,15 @@ vim.cmd('set guicursor=n-v-c:block-Cursor-blinkwait1000-blinkon500-blinkoff300')
 -- turn off swap file
 vim.opt.swapfile = false
 
--- remove redundant whitespace
+-- remove redundant trailing whitespace
 vim.api.nvim_create_autocmd({ "BufWritePre" }, {
   pattern = { "*" },
   command = [[%s/\s\+$//e]],
 })
+
+-- jump to errors
+vim.keymap.set("n", "]g", vim.diagnostic.goto_next)
+vim.keymap.set("n", "[g", vim.diagnostic.goto_prev)
 
 -- -- Auto-reindent and remove trailing whitespace on save
 -- vim.api.nvim_create_autocmd("BufWritePre", {
