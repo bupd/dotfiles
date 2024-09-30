@@ -108,5 +108,7 @@ export LESS_TERMCAP_us=$'\e[1;4;31m'
 # GOPATH from arch community
 export PATH="$PATH:$(go env GOBIN):$(go env GOPATH)/bin"
 
+eval "$(go env)"
+
 # Shell integrations
 eval "$(fzf --zsh)"
