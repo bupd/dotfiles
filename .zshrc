@@ -78,7 +78,7 @@ zstyle ':fzf-tab:complete:cd:*' fzf-preview 'ls --color $realpath'
 
 # Aliases
 alias ls='ls --color'
-alias vim='nvim'
+alias vim='sudo -E -s nvim'
 alias ..='cd ..'
 alias ...='cd ../..'
 alias l='ls -al'
@@ -112,3 +112,7 @@ eval "$(go env)"
 
 # Shell integrations
 eval "$(fzf --zsh)"
+
+
+# Load Angular CLI autocompletion.
+source <(ng completion script)
