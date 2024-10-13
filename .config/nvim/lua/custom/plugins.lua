@@ -47,6 +47,7 @@ local plugins = {
     "williamboman/mason.nvim",
     opts = {
       ensure_installed = {
+        "angular-language-server@16.2.0",
         "typescript-language-server",
         "tailwindcss-language-server",
         "astro",
