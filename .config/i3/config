@@ -245,7 +245,7 @@ exec_always clipmenud
 exec_always source /usr/share/nvm/init-nvm.sh
 exec obsidian
 exec firefox
-exec env LD_PRELOAD=/usr/lib/spotify-adblock.so spotify &
+exec_always env LD_PRELOAD=/usr/lib/spotify-adblock.so spotify &
 
 # start keyboard remap
 exec_always sudo xremap ~/.config/xremap/config.yml &
