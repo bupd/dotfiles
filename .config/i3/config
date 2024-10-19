@@ -233,7 +233,7 @@ assign [class="obsidian"] $ws10
 assign [class="obs"] $ws9
 assign [class="Spotify"] $ws7
 assign [class="Slack"] $ws8
-assign [class="discord"] $ws7
+assign [class="discord"] $ws9
 
 bindsym $mod+Control+1 [class="obsidian"] move workspace 1; workspace 1
 bindsym $mod+Control+2 [class="obsidian"] move workspace 2; workspace 2
@@ -248,6 +248,9 @@ exec obsidian
 exec firefox
 exec_always env LD_PRELOAD=/usr/lib/spotify-adblock.so spotify &
 exec discord
+exec slack
+exec brave
+exec google-chrome-stable
 
 # start keyboard remap
 exec_always sudo xremap ~/.config/xremap/config.yml &
