@@ -245,7 +245,6 @@ exec kitty
 exec_always clipmenud
 exec_always source /usr/share/nvm/init-nvm.sh
 exec obsidian
-exec firefox
 exec_always env LD_PRELOAD=/usr/lib/spotify-adblock.so spotify &
 exec discord
 exec slack
