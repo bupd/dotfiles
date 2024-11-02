@@ -226,6 +226,7 @@ bar {
 
 # xprop to get the window name
 assign [class="Xfce4-terminal"] $ws1
+assign [class="Microsoft-edge"] $ws2
 assign [class="Brave-browser"] $ws2
 assign [class="Google-chrome"] $ws3
 assign [class="whatsapp-electron"] $ws4
@@ -248,7 +249,7 @@ exec obsidian
 exec_always env LD_PRELOAD=/usr/lib/spotify-adblock.so spotify &
 exec discord
 exec slack
-exec brave
+exec microsoft-edge-stable
 exec google-chrome-stable
 
 # start keyboard remap
