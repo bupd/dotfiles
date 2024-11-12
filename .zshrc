@@ -113,6 +113,13 @@ eval "$(go env)"
 # Shell integrations
 eval "$(fzf --zsh)"
 
+# for asdf version manager
+. /opt/asdf-vm/asdf.sh
+
+# nvm completion
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/zsh_completion" ] && \. "$NVM_DIR/zsh_completion"  # This loads nvm zsh_completion
 
 # Load Angular CLI autocompletion.
 source <(ng completion script)
