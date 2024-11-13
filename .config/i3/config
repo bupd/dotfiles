@@ -247,10 +247,10 @@ exec_always clipmenud
 exec_always source /usr/share/nvm/init-nvm.sh
 exec obsidian
 exec_always env LD_PRELOAD=/usr/lib/spotify-adblock.so spotify &
-exec discord
-exec slack
+# exec discord
+# exec slack
 exec microsoft-edge-stable
-exec google-chrome-stable
+# exec google-chrome-stable
 
 # start keyboard remap
 exec_always sudo xremap ~/.config/xremap/config.yml &
