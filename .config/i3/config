@@ -242,7 +242,7 @@ bindsym $mod+Control+3 [class="obsidian"] move workspace 3; workspace 3
 bindsym $mod+Control+4 [class="obsidian"] move workspace 4; workspace 4
 bindsym $mod+Control+0 [class="obsidian"] move workspace 10; workspace 10
 
-exec kitty
+exec kitty --single-instance
 exec_always clipmenud
 exec_always source /usr/share/nvm/init-nvm.sh
 exec obsidian
