@@ -14,6 +14,11 @@ required_programs=(
     "pactl"
     "zsh"
     "bash"
+    "xremap"
+    "microsoft-edge-stable"
+    "spotify"
+    "node"
+    "ng"
 )
 
 # Check for missing programs
@@ -23,6 +28,11 @@ for program in "${required_programs[@]}"; do
         missing_programs+=("$program")
     fi
 done
+
+# Check if spotify-adblock is installed
+if ! [ -f /usr/lib/spotify-adblock.so ]; then
+    missing_programs+=("spotify-adblock")
+fi
 
 # Report missing programs
 if [ ${#missing_programs[@]} -eq 0 ]; then
