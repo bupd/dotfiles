@@ -15,6 +15,7 @@ required_programs=(
     "zsh"
     "bash"
     "xremap"
+    "asdf"
     "microsoft-edge-stable"
     "spotify"
     "node"
@@ -36,7 +37,7 @@ fi
 
 # Report missing programs
 if [ ${#missing_programs[@]} -eq 0 ]; then
-    echo "All required programs are installed."
+    echo "All required programs are installed. & make sure sudo cmds can run without password"
 else
     echo "The following programs are missing:"
     for program in "${missing_programs[@]}"; do
