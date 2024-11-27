@@ -5,4 +5,4 @@
 #--skip-playlist-after-errors 20
 # --playlist-reverse
 # -S "+height:1080" -f "bv*"
--P "/home/bupd/Downloads/youtube"
+-P "/home/bupd/s/Downloads/youtube"
