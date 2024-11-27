@@ -1,0 +1,35 @@
+#!/bin/sh
+# Extracting CPU and NVMe temperature
+
+# Get NVMe temperature (Composite)
+nvme_temp=$(sensors | grep "Composite" | awk -F " " '{print $2}' | sed 's/°C//;s/+//')
+
+# Get CPU temperature (Tctl)
+cpu_temp=$(sensors | grep "Tctl" | awk -F " " '{print $2}' | sed 's/°C//;s/+//')
+
+# If neither temperature is found, return an error
+if [ -z "$nvme_temp" ] && [ -z "$cpu_temp" ]; then
+    echo "Error: No temperature data found."
+    exit 1
+fi
+
+# Apply color logic based on temperature thresholds for NVMe temperature
+if [ 1 -eq "$(echo "$nvme_temp > 80" | bc 2>/dev/null)" ]; then
+    nvme_color="%%{F#ed0b0b}"  # Red for high NVMe temperature
+elif [ 1 -eq "$(echo "$nvme_temp > 60" | bc 2>/dev/null)" ]; then
+    nvme_color="%%{F#f2e421}"  # Yellow for medium NVMe temperature
+else
+    nvme_color="%%{F#00FF00}"  # Green for low NVMe temperature
+fi
+
+# Apply color logic based on temperature thresholds for CPU temperature
+if [ 1 -eq "$(echo "$cpu_temp > 80" | bc 2>/dev/null)" ]; then
+    cpu_color="%%{F#ed0b0b}"  # Red for high CPU temperature
+elif [ 1 -eq "$(echo "$cpu_temp > 60" | bc 2>/dev/null)" ]; then
+    cpu_color="%%{F#f2e421}"  # Yellow for medium CPU temperature
+else
+    cpu_color="%%{F#00FF00}"  # Green for low CPU temperature
+fi
+
+# Print both NVMe and CPU temperatures in one line
+echo "$nvme_color NVMe Temp: $nvme_temp°C %{F-} | $cpu_color CPU Temp: $cpu_temp°C %{F-}"
