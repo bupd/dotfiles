@@ -53,6 +53,10 @@ bindkey -s '^F' 'exec sessionizer^M'
 bindkey '^[[1;5C' forward-word
 bindkey '^[[1;5D' backward-word
 bindkey '^[[3;5~' kill-word
+bindkey  '^[[3~'  delete-char
+bindkey '\b'  backward-delete-char
+bindkey '\C-h' backward-kill-word
+bindkey '<M-Del>' kill-word
 
 # History
 HISTSIZE=100000
@@ -92,7 +96,9 @@ alias gfp="git fetch && git pull"
 alias lz="lazygit"
 alias phone="cd /run/user/1000/gvfs/sftp:host=192.168.1.127,port=8022/storage/E65A-C7E4/"
 alias cacheclr="yes | pacrmorphans && yes | yaclr"
+alias dy="dig +short @dns.toys"
 
+export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/vk_swiftshader_icd.json
 export PATH="$HOME/.local/bin/":$PATH
 PATH=$PATH:$HOME/bin
 # source /usr/share/nvm/init-nvm.sh
