@@ -98,7 +98,6 @@ alias phone="cd /run/user/1000/gvfs/sftp:host=192.168.1.127,port=8022/storage/E6
 alias cacheclr="yes | pacrmorphans && yes | yaclr"
 alias dy="dig +short @dns.toys"
 
-export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/vk_swiftshader_icd.json
 export PATH="$HOME/.local/bin/":$PATH
 PATH=$PATH:$HOME/bin
 # source /usr/share/nvm/init-nvm.sh
