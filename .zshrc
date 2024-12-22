@@ -95,7 +95,7 @@ alias gs="git status"
 alias gfp="git fetch && git pull"
 alias lz="lazygit"
 alias phone="cd /run/user/1000/gvfs/sftp:host=192.168.1.127,port=8022/storage/E65A-C7E4/"
-alias cacheclr="yes | pacrmorphans && yes | yaclr"
+alias clean="yes | pacrmorphans && yes | yaclr"
 alias dy="dig +short @dns.toys"
 
 export PATH="$HOME/.local/bin/":$PATH
