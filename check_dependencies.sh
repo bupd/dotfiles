@@ -8,6 +8,8 @@ required_programs=(
     "i3status"
     "fzf"
     "kitty"
+    "xdotool"
+    "xbindkeys"
     "tmux"
     "nvim"
     "picom"
