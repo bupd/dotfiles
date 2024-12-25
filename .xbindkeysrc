@@ -39,16 +39,16 @@
 
 # Examples of commands:
 
-"xbindkeys_show"
-  control+shift + q
-
-# set directly keycode (here control + f with my keyboard)
-"xterm"
-  c:41 + m:0x4
-
-# specify a mouse button
-"xterm"
-  control + b:2
+# "xbindkeys_show"
+#   control+shift + q
+#
+# # set directly keycode (here control + f with my keyboard)
+# "xterm"
+#   c:41 + m:0x4
+#
+# # specify a mouse button
+# "xterm"
+#   control + b:2
 
 ##################################
 # Start of user config #
@@ -73,9 +73,17 @@
 "xdotool click 1"
   Shift+Control+Return
 
-# Right mouse click with Ctrl + Shift + |
+# Right mouse click with Ctrl + Shift + i
 "xdotool click 3"
   Shift+Control+i
+
+# Mouse scroll up with Ctrl + Shift + u
+"xdotool click 4"
+  Shift+Control+u
+
+# Mouse scroll up with Ctrl + Shift + o
+"xdotool click 5"
+  Shift+Control+o
 
 ##################################
 # End of user config #
