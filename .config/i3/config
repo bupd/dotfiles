@@ -248,6 +248,7 @@ exec_always sudo xremap ~/.config/xremap/config.yml &
 exec kitty --single-instance
 exec_always clipmenud
 exec_always source /usr/share/nvm/init-nvm.sh
+exec_always xbindkeys
 exec obsidian
 exec_always env LD_PRELOAD=/usr/lib/spotify-adblock.so spotify &
 # exec discord
