@@ -73,9 +73,9 @@
 "xdotool click 1"
   Shift+Control+Return
 
-# Left mouse click with Ctrl + Shift + |
-"xdotool click --clearmodifiers 3"
-  Shift+Control+|
+# Right mouse click with Ctrl + Shift + |
+"xdotool click 3"
+  Shift+Control+i
 
 ##################################
 # End of user config #
