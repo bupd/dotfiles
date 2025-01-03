@@ -98,6 +98,10 @@ alias phone="cd /run/user/1000/gvfs/sftp:host=192.168.1.127,port=8022/storage/E6
 alias clean="yes | pacrmorphans && yes | yaclr"
 alias dy="dig +short @dns.toys"
 
+# Neovim SOLOS the Editors
+export EDITOR="nvim"
+
+# PATH for binaries
 export PATH="$HOME/.local/bin/":$PATH
 PATH=$PATH:$HOME/bin
 # source /usr/share/nvm/init-nvm.sh
@@ -128,3 +132,5 @@ export NVM_DIR="$HOME/.nvm"
 
 # Load Angular CLI autocompletion.
 source <(ng completion script)
+
+eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
