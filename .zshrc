@@ -131,7 +131,7 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/zsh_completion" ] && \. "$NVM_DIR/zsh_completion"  # This loads nvm zsh_completion
 
 # for dagger harbor push
-export REGPASS = "Harbor12345"
+export REGPASS="Harbor12345"
 
 # Load Angular CLI autocompletion.
 source <(ng completion script)
