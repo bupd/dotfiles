@@ -1,2 +1,3 @@
 .zsh_history filter=git-crypt diff=git-crypt
 kumar filter=git-crypt diff=git-crypt
+.wakatime* filter=git-crypt diff=git-crypt
