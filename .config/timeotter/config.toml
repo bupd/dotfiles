@@ -1,4 +1,0 @@
-CalendarID = "bupdprasanth@gmail.com"
-CmdToExec = "mpv ~/video.mp4"
-MaxRes = 2
-TokenFile = "~/.cal-token.json"
