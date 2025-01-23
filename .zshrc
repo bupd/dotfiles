@@ -95,7 +95,7 @@ alias gs="git status"
 alias gfp="git fetch && git pull"
 alias lz="lazygit"
 alias phone="cd /run/user/1000/gvfs/sftp:host=192.168.1.127,port=8022/storage/E65A-C7E4/"
-alias clean="yes | pacrmorphans || true; yes | yaclr || true; sudo systemctl stop docker.socket || true; sudo systemctl stop docker || true; sudo rm -rf /var/lib/docker || true;"
+alias clean="yes | pacrmorphans || true; yes | yaclr || true; sudo systemctl stop docker.socket || true; sudo systemctl stop docker || true; sudo rm -rf /var/lib/docker || true; sudo systemctl start docker"
 alias dy="dig +short @dns.toys"
 
 # Neovim SOLOS the Editors
