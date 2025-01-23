@@ -47,7 +47,6 @@ vim.api.nvim_create_autocmd('FileType', {
   end,
 })
 
-
 -- -- Auto-reindent and remove trailing whitespace on save
 -- vim.api.nvim_create_autocmd("BufWritePre", {
 --   pattern = "*",
