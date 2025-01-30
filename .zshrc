@@ -144,3 +144,10 @@ if [ -f '/home/bupd/s/code/update/google-cloud-sdk/path.zsh.inc' ]; then . '/hom
 
 # The next line enables shell command completion for gcloud.
 if [ -f '/home/bupd/s/code/update/google-cloud-sdk/completion.zsh.inc' ]; then . '/home/bupd/s/code/update/google-cloud-sdk/completion.zsh.inc'; fi
+
+# fucking pyenv
+# export PATH="$HOME/.pyenv/bin:$PATH"
+# eval "$(pyenv init --path)"
+# eval "$(pyenv virtualenv-init -)"
+
+# changed the private key to 600
