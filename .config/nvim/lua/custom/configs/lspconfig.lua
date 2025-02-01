@@ -4,11 +4,17 @@ local capabilities = configs.capabilities
 
 local lspconfig = require("lspconfig")
 
+-- local nvlsp = require "nvchad.configs.lspconfig"
+-- local on_attach = nvlsp.on_attach
+-- local capabilities = nvlsp.capabilities
+--
+-- nvlsp.defaults() -- loads nvchad's defaults
+
 local servers = {
 	"html",
 	"clangd",
 	"astro",
-	"tsserver",
+	"ts_ls",
 	"pyright",
 	"gopls",
 	"angularls",
