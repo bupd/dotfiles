@@ -1,11 +1,9 @@
 vim.opt.colorcolumn = "80"
 vim.opt.relativenumber = true
-
+-- set cursor blink
 vim.cmd("set guicursor=n-v-c:block-Cursor-blinkwait1000-blinkon500-blinkoff300")
-
 -- turn off swap file
 vim.opt.swapfile = false
-
 
 -- remove redundant trailing whitespace
 vim.api.nvim_create_autocmd({ "BufWritePre" }, {
@@ -40,7 +38,7 @@ end
 -- Create a command to call the function
 vim.api.nvim_create_user_command("RemoveQFItem", RemoveQFItem, {})
 
--- Autocommand for mapping 'dd' only in quickfix window
+-- Autocommand for mapping 'dd' only in quickfix list
 vim.api.nvim_create_autocmd("FileType", {
 	pattern = "qf",
 	callback = function()
@@ -58,6 +56,35 @@ vim.keymap.set("n", "<leader>gm", ":Git mergetool<CR>")
 -- Improve diff experience
 vim.opt.diffopt:append("algorithm:patience")
 vim.opt.diffopt:append("indent-heuristic")
+
+-- autocmds
+local autocmd = vim.api.nvim_create_autocmd
+
+-- This autocmd will restore cursor position on file open
+autocmd("BufReadPost", {
+	pattern = "*",
+	callback = function()
+		local line = vim.fn.line("'\"")
+		if
+			line > 1
+			and line <= vim.fn.line("$")
+			and vim.bo.filetype ~= "commit"
+			and vim.fn.index({ "xxd", "gitrebase" }, vim.bo.filetype) == -1
+		then
+			vim.cmd('normal! g`"')
+		end
+	end,
+})
+
+-- Show Nvdash when all buffers are closed
+vim.api.nvim_create_autocmd("BufDelete", {
+	callback = function()
+		local bufs = vim.t.bufs
+		if #bufs == 1 and vim.api.nvim_buf_get_name(bufs[1]) == "" then
+			vim.cmd("Nvdash")
+		end
+	end,
+})
 
 -- -- Auto-reindent and remove trailing whitespace on save
 -- vim.api.nvim_create_autocmd("BufWritePre", {
