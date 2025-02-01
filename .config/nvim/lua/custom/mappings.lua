@@ -60,18 +60,46 @@ M.gitsigns = {
 		},
 
 		-- Actions
-		["<leader>gh"] = {
+		["<leader>gH"] = {
 			function()
 				require("gitsigns").reset_hunk()
 			end,
 			"Reset hunk",
 		},
 
-		["<leader>gH"] = {
+		["<leader>gh"] = {
 			function()
 				require("gitsigns").preview_hunk()
 			end,
 			"Preview hunk",
+		},
+
+		["<leader>gu"] = {
+			function()
+				package.loaded.gitsigns.undo_stage_hunk()
+			end,
+			"Undo Stage Hunk",
+		},
+
+		["<leader>ga"] = {
+			function()
+				package.loaded.gitsigns.stage_hunk()
+			end,
+			"Stage Hunk",
+		},
+
+		["<leader>gS"] = {
+			function()
+				package.loaded.gitsigns.stage_buffer()
+			end,
+			"Stage Buffer",
+		},
+
+		["<leader>gU"] = {
+			function()
+				package.loaded.gitsigns.reset_buffer()
+			end,
+			"Reset Buffer",
 		},
 
 		["<leader>gb"] = {
