@@ -14,13 +14,6 @@ local plugins = {
 			require("base46").load_all_highlights()
 		end,
 	},
-  { "nvim-treesitter/nvim-treesitter",
-    build = ":TSUpdate",
-    lazy = false,
-    config = function ()
-      require("custom.configs.treesitter")
-    end,
- },
 	-- "nvchad/volt", -- optional, needed for theme switcher
 	-- or just use Telescope themes
 	{ "ActivityWatch/aw-watcher-vim" },
