@@ -176,11 +176,17 @@ local plugins = {
 		"mfussenegger/nvim-jdtls",
 	},
 	{ "wakatime/vim-wakatime", lazy = false },
+	-- typr testing thing
 	{
 		"nvzone/typr",
 		dependencies = "nvzone/volt",
 		opts = {},
 		cmd = { "Typr", "TyprStats" },
+	},
+	-- vim fugitive
+	{
+		"tpope/vim-fugitive",
+		cmd = { "Git", "G" },
 	},
 }
 return plugins
