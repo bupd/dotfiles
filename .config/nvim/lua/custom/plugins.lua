@@ -65,8 +65,13 @@ local plugins = {
 				"angular-language-server@16.2.0",
 				"typescript-language-server",
 				"tailwindcss-language-server",
-				"astro",
+				"astro-language-server",
+				"bash-language-server",
+				"lua-language-server",
 				"gopls",
+				"goimports",
+				"stylua",
+				"isort",
 				"eslint-lsp",
 				"pyright",
 				"mypy",
@@ -78,6 +83,7 @@ local plugins = {
 	},
 
 	{ "williamboman/mason-lspconfig.nvim" },
+	{ "rcarriga/nvim-notify", lazy = false },
 
 	-- leetcode
 	{
