@@ -210,12 +210,12 @@ local plugins = {
 		cmd = "Trouble",
 		keys = {
 			{
-				"<leader>txx",
+				"<leader>tx",
 				"<cmd>Trouble diagnostics toggle<cr>",
 				desc = "Diagnostics (Trouble)",
 			},
 			{
-				"<leader>txX",
+				"<leader>tX",
 				"<cmd>Trouble diagnostics toggle filter.buf=0<cr>",
 				desc = "Buffer Diagnostics (Trouble)",
 			},
@@ -225,7 +225,7 @@ local plugins = {
 				desc = "Symbols (Trouble)",
 			},
 			{
-				"<leader>cl",
+				"<leader>tcl",
 				"<cmd>Trouble lsp toggle focus=false win.position=right<cr>",
 				desc = "LSP Definitions / references / ... (Trouble)",
 			},
