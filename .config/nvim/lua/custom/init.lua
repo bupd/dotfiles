@@ -6,6 +6,20 @@ vim.cmd("set guicursor=n-v-c:block-Cursor-blinkwait1000-blinkon500-blinkoff300")
 -- turn off swap file
 vim.opt.swapfile = false
 
+-- put this in your main init.lua file ( before lazy setup )
+vim.g.base46_cache = vim.fn.stdpath("data") .. "/base46_cache/"
+
+-- put this after lazy setup
+
+-- (method 1, For heavy lazyloaders)
+dofile(vim.g.base46_cache .. "defaults")
+dofile(vim.g.base46_cache .. "statusline")
+
+-- (method 2, for non lazyloaders) to load all highlights at once
+for _, v in ipairs(vim.fn.readdir(vim.g.base46_cache)) do
+	dofile(vim.g.base46_cache .. v)
+end
+
 -- remove redundant trailing whitespace
 vim.api.nvim_create_autocmd({ "BufWritePre" }, {
 	pattern = { "*" },
@@ -48,15 +62,15 @@ vim.api.nvim_create_autocmd("FileType", {
 })
 
 -- Helpful keymaps for Git operations
-vim.keymap.set('n', '<leader>gG', ':Git<CR>')
-vim.keymap.set('n', '<leader>gd', ':Gdiffsplit<CR>')
-vim.keymap.set('n', '<leader>gc', ':Git commit<CR>')
-vim.keymap.set('n', '<leader>gB', ':Git blame<CR>')
-vim.keymap.set('n', '<leader>gm', ':Git mergetool<CR>')
+vim.keymap.set("n", "<leader>gG", ":Git<CR>")
+vim.keymap.set("n", "<leader>gd", ":Gdiffsplit<CR>")
+vim.keymap.set("n", "<leader>gc", ":Git commit<CR>")
+vim.keymap.set("n", "<leader>gB", ":Git blame<CR>")
+vim.keymap.set("n", "<leader>gm", ":Git mergetool<CR>")
 
 -- Improve diff experience
-vim.opt.diffopt:append('algorithm:patience')
-vim.opt.diffopt:append('indent-heuristic')
+vim.opt.diffopt:append("algorithm:patience")
+vim.opt.diffopt:append("indent-heuristic")
 
 -- -- Auto-reindent and remove trailing whitespace on save
 -- vim.api.nvim_create_autocmd("BufWritePre", {
