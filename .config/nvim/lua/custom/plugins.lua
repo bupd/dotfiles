@@ -43,6 +43,7 @@ local plugins = {
 			require("custom.configs.lspconfig")
 		end,
 	},
+	-- null-ls replacement
 	{
 		"nvimtools/none-ls.nvim",
 		event = "VeryLazy",
