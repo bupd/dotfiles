@@ -1,6 +1,6 @@
 local gitsigns = require("gitsigns")
 -- Actions
-vim.keymap.set("n", "<leader>gss", gitsigns.stage_hunk)
+vim.keymap.set("n", "<leader>gas", gitsigns.stage_hunk)
 vim.keymap.set("n", "<leader>gr", gitsigns.reset_hunk)
 vim.keymap.set("v", "<leader>gs", function()
 	gitsigns.stage_hunk({ vim.fn.line("."), vim.fn.line("v") })
