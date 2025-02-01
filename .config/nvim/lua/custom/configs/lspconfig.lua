@@ -26,6 +26,9 @@ local servers = {
 	"yamlls",
 }
 
+-- set notify
+vim.notify = require("notify")
+
 for _, lsp in ipairs(servers) do
 	if lsp == "gopls" then
 		lspconfig[lsp].setup({
