@@ -95,7 +95,7 @@ alias gs="git status"
 alias gfp="git fetch && git pull"
 alias lz="lazygit"
 alias phone="cd /run/user/1000/gvfs/sftp:host=192.168.1.127,port=8022/storage/E65A-C7E4/"
-alias clean="yes | pacrmorphans || true; yes | yaclr || true; sudo systemctl stop docker.socket || true; sudo systemctl stop docker || true; sudo rm -rf /var/lib/docker || true; sudo systemctl start docker"
+alias clean="yes | pacrmorphans || true; yes | yaclr || true; echo 'deleting docker cache. this may feel stuck but it actually inst stuck'; sudo systemctl stop docker.socket || true; sudo systemctl stop docker || true; sudo rm -rf /var/lib/docker || true; sudo systemctl start docker"
 alias dy="dig +short @dns.toys"
 alias kns="kubectl config set-context --current --namespace"
 alias kctx="kubectx"
@@ -127,12 +127,12 @@ eval "$(go env)"
 eval "$(fzf --zsh)"
 
 # for asdf version manager
-. /opt/asdf-vm/asdf.sh
+# . /opt/asdf-vm/asdf.sh
 
 # nvm completion
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/zsh_completion" ] && \. "$NVM_DIR/zsh_completion"  # This loads nvm zsh_completion
+# export NVM_DIR="$HOME/.nvm"
+# [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+# [ -s "$NVM_DIR/zsh_completion" ] && \. "$NVM_DIR/zsh_completion"  # This loads nvm zsh_completion
 
 # for dagger harbor push
 export REGPASS="Harbor12345"
@@ -162,3 +162,6 @@ alias buildharbor-registry="make check_environment versions_prepare compile_regi
 export PYENV_ROOT="$HOME/.pyenv"
 [[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
 eval "$(pyenv init - zsh)"
+
+# for android emulator
+export ANDROID_HOME=~/Android/Sdk
