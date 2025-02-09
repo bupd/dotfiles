@@ -51,6 +51,8 @@ local plugins = {
 			return require("custom.configs.null-ls")
 		end,
 	},
+	-- astrojs plugin
+	{ "wuelnerdotexe/vim-astro" },
 	-- {
 	--   "jose-elias-alvarez/null-ls.nvim",
 	--   event = "VeryLazy",
@@ -220,6 +222,7 @@ local plugins = {
 		"tpope/vim-fugitive",
 		cmd = { "Git", "G" },
 	},
+  -- add trouble for highlighting issues and code problems/errors
 	{
 		"folke/trouble.nvim",
 		opts = {}, -- for default options, refer to the configuration section for custom setup.
