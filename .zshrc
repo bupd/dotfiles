@@ -138,7 +138,7 @@ eval "$(fzf --zsh)"
 export REGPASS="Harbor12345"
 
 # Load Angular CLI autocompletion.
-source <(ng completion script)
+# source <(ng completion script)
 
 eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 
@@ -165,3 +165,4 @@ eval "$(pyenv init - zsh)"
 
 # for android emulator
 export ANDROID_HOME=~/Android/Sdk
+# source /usr/share/nvm/init-nvm.sh
