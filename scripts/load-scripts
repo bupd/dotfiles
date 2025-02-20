@@ -1,0 +1,3 @@
+#! /bin/bash
+
+# load all the scripts in '.' to the /usr/bin/ folder
