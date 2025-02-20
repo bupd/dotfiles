@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# Function to run the nvchecker command and get the result
+run_nvchecker() {
+    # Run nvchecker command and capture the result
+    result=$(nvchecker -c .nvchecker.toml 2>&1)
+    echo "$result"
+}
+
+# Traverse through all subdirectories at depth 1 (one level deep)
+for dir in */; do
+    # Skip if it's not a directory
+    if [ ! -d "$dir" ]; then
+        continue
+    fi
+
+    # Get the directory name
+    dir_name=$(basename "$dir")
+
+    # Check if the directory is accessible
+    if [ ! -r "$dir" ]; then
+        echo "Cannot access directory $dir. Skipping."
+        continue
+    fi
+
+    # Change to the directory and run nvchecker command
+    pushd "$dir" > /dev/null
+
+    # Run the nvchecker command and capture the result
+    result=$(run_nvchecker)
+
+    # Output the directory and result in the desired format
+    echo "$(pwd) - $result"
+
+    popd > /dev/null
+done
