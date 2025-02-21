@@ -101,6 +101,7 @@ alias kns="kubectl config set-context --current --namespace"
 alias kctx="kubectx"
 alias d="docker"
 alias dc="docker compose"
+alias refresh-camera="sudo usermod -aG video $USER"
 
 # Neovim SOLOS the Editors
 export EDITOR="nvim"
