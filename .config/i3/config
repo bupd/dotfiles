@@ -226,7 +226,6 @@ bar {
 
 # xprop to get the window name
 assign [class="Xfce4-terminal"] $ws1
-assign [class="Microsoft-edge"] $ws2
 assign [class="Brave-browser"] $ws2
 assign [class="Google-chrome"] $ws3
 assign [class="whatsapp-electron"] $ws4
@@ -250,10 +249,10 @@ exec_always clipmenud
 exec_always source /usr/share/nvm/init-nvm.sh
 exec_always xbindkeys
 exec obsidian
-exec_always env LD_PRELOAD=/usr/lib/spotify-adblock.so spotify &
+exec_always sleep 4 && env LD_PRELOAD=/usr/lib/spotify-adblock.so spotify &
+exec sleep 2 && brave
 # exec discord
 # exec slack
-exec microsoft-edge-stable
+# exec microsoft-edge-stable
 # exec google-chrome-stable
-
 exec_always ~/go/bin/digital-wellbeing &
