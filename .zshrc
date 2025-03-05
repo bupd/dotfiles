@@ -175,7 +175,7 @@ function notify_after_command() {
 
   # Check if the last command was successful or failed
   if [ $? -eq 0 ]; then
-    notify-send "Task Complete" "Command: '$cmd' has finished successfully."
+    notify-send -t 8 "Complete" "Command: '$cmd' has finished successfully."
   else
     notify-send "Task Failed" "Command: '$cmd' failed."
   fi
