@@ -167,3 +167,21 @@ eval "$(pyenv init - zsh)"
 # for android emulator
 export ANDROID_HOME=~/Android/Sdk
 # source /usr/share/nvm/init-nvm.sh
+
+# Automatically notify after each command finishes with context
+function notify_after_command() {
+  # Capture the last executed command
+  local cmd=$(fc -ln -1)  # Get the last command executed
+
+  # Check if the last command was successful or failed
+  if [ $? -eq 0 ]; then
+    notify-send "Task Complete" "Command: '$cmd' has finished successfully."
+  else
+    notify-send "Task Failed" "Command: '$cmd' failed."
+  fi
+}
+
+# Call the function after each command
+PROMPT_COMMAND="notify_after_command"
+
+precmd() { eval "$PROMPT_COMMAND" }
