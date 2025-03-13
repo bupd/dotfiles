@@ -82,6 +82,7 @@ zstyle ':fzf-tab:complete:cd:*' fzf-preview 'ls --color $realpath'
 
 # Aliases
 alias ls='ls --color'
+alias rl='ramalama'
 alias vim='sudo -E -s nvim'
 alias ..='cd ..'
 alias ...='cd ../..'
