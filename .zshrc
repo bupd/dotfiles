@@ -150,23 +150,14 @@ if [ -f '/home/bupd/s/code/update/google-cloud-sdk/path.zsh.inc' ]; then . '/hom
 # The next line enables shell command completion for gcloud.
 if [ -f '/home/bupd/s/code/update/google-cloud-sdk/completion.zsh.inc' ]; then . '/home/bupd/s/code/update/google-cloud-sdk/completion.zsh.inc'; fi
 
-# fucking pyenv
-# export PATH="$HOME/.pyenv/bin:$PATH"
-# eval "$(pyenv init --path)"
-# eval "$(pyenv virtualenv-init -)"
-
 # changed the ssh private key to 600
 
 # harbor related things
 alias buildharborcore="make check_environment versions_prepare compile_core && docker build --build-arg harbor_base_image_version=dev --build-arg harbor_base_namespace=goharbor -f make/photon/core/Dockerfile -t goharbor/harbor-core:dev ."
 alias buildharbor-jobservice="make check_environment versions_prepare compile_jobservice && docker build --build-arg harbor_base_image_version=dev --build-arg harbor_base_namespace=goharbor -f make/photon/jobservice/Dockerfile -t goharbor/harbor-jobservice:dev ."
 alias buildharbor-registry="make check_environment versions_prepare compile_registryctl && docker build --build-arg harbor_base_image_version=dev --build-arg harbor_base_namespace=goharbor -f make/photon/registryctl/Dockerfile -t goharbor/harbor-registryctl:dev ."
-export PYENV_ROOT="$HOME/.pyenv"
-[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
-eval "$(pyenv init - zsh)"
 
-# for android emulator
-export ANDROID_HOME=~/Android/Sdk
+# for nvm
 # source /usr/share/nvm/init-nvm.sh
 
 # Automatically notify after each command finishes with context
