@@ -40,6 +40,9 @@ zinit snippet OMZP::command-not-found
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
+## install asdf
+# export PATH="${ASDF_DATA_DIR:-$HOME/.asdf}/shims:$PATH"
+
 # Load completions
 autoload -Uz compinit && compinit
 zinit cdreplay -q
@@ -177,3 +180,4 @@ function notify_after_command() {
 PROMPT_COMMAND="notify_after_command"
 
 precmd() { eval "$PROMPT_COMMAND" }
+
