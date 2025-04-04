@@ -42,7 +42,7 @@ zinit snippet OMZP::command-not-found
 
 ## install asdf
 # export PATH="${ASDF_DATA_DIR:-$HOME/.asdf}/shims:$PATH"
-
+export PATH="${ASDF_DATA_DIR:-$HOME/.asdf}/shims:$PATH"
 # Load completions
 autoload -Uz compinit && compinit
 zinit cdreplay -q
