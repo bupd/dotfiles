@@ -145,7 +145,7 @@ export REGPASS="Harbor12345"
 # Load Angular CLI autocompletion.
 # source <(ng completion script)
 
-eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+# eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 
 # The next line updates PATH for the Google Cloud SDK.
 if [ -f '/home/bupd/s/code/update/google-cloud-sdk/path.zsh.inc' ]; then . '/home/bupd/s/code/update/google-cloud-sdk/path.zsh.inc'; fi
