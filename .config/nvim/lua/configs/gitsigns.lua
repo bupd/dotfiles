@@ -1,4 +1,4 @@
-local gitsigns = require("gitsigns")
+local gitsigns = require "gitsigns"
 
 -- Actions
 vim.keymap.set("n", "<leader>gas", gitsigns.stage_hunk)
