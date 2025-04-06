@@ -13,7 +13,12 @@ return {
     end,
   },
   { "christoomey/vim-tmux-navigator", lazy = false },
-  { "lewis6991/gitsigns.nvim",        lazy = false },
+
+  -- gitsigns
+  {
+    "lewis6991/gitsigns.nvim",
+    lazy = false,
+  },
   {
     "mbbill/undotree",
     lazy = false,
@@ -69,7 +74,7 @@ return {
   },
   -- { "williamboman/mason-lspconfig.nvim" },
   -- nvim notify
-  { "rcarriga/nvim-notify",   lazy = false },
+  { "rcarriga/nvim-notify", lazy = false },
   -- gopher for new things
   {
     "olexsmir/gopher.nvim",
@@ -83,7 +88,7 @@ return {
       require("gopher").setup(opts)
     end,
     build = function()
-      vim.cmd([[silent! GoInstallDeps]])
+      vim.cmd [[silent! GoInstallDeps]]
     end,
   },
   -- harpoon
@@ -91,7 +96,7 @@ return {
     "ThePrimeagen/harpoon",
     event = "VeryLazy",
     config = function(_)
-      require("configs.harpoon")
+      require "configs.harpoon"
     end,
   },
   { "wakatime/vim-wakatime", lazy = false },
@@ -137,7 +142,6 @@ return {
       },
     },
   },
-
 
   -- {
   -- 	"nvim-treesitter/nvim-treesitter",
