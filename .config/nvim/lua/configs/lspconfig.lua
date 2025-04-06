@@ -13,7 +13,6 @@ local servers = {
 	"angularls",
 	"tailwindcss",
 	"bashls",
-	"lua_ls",
 	"docker_compose_language_service",
 	"dockerls",
 }
