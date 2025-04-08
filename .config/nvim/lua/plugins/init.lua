@@ -75,6 +75,29 @@ return {
   -- { "williamboman/mason-lspconfig.nvim" },
   -- nvim notify
   { "rcarriga/nvim-notify", lazy = false },
+
+  -- treesitter
+  {
+    "nvim-treesitter/nvim-treesitter",
+    opts = {
+      ensured_installed = {
+        "bash",
+        "comment",
+        "css",
+        "html",
+        "javascript",
+        "jsdoc",
+        "jsonc",
+        "lua",
+        "markdown",
+        "regex",
+        "scss",
+        "toml",
+        "typescript",
+        "yaml",
+      },
+    },
+  },
   -- gopher for new things
   {
     "olexsmir/gopher.nvim",
