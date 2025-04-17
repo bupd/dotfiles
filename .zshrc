@@ -41,8 +41,7 @@ zinit snippet OMZP::command-not-found
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
 ## install asdf
-# export PATH="${ASDF_DATA_DIR:-$HOME/.asdf}/shims:$PATH"
-# export PATH="${ASDF_DATA_DIR:-$HOME/.asdf}/shims:$PATH"
+export PATH="${ASDF_DATA_DIR:-$HOME/.asdf}/shims:$PATH"
 # Load completions
 autoload -Uz compinit && compinit
 zinit cdreplay -q
@@ -86,6 +85,7 @@ zstyle ':fzf-tab:complete:cd:*' fzf-preview 'ls --color $realpath'
 # Aliases
 alias ls='ls --color'
 alias rl='ramalama'
+alias pack='pack-cli'
 alias vim='sudo -E -s nvim'
 alias ..='cd ..'
 alias ...='cd ../..'
