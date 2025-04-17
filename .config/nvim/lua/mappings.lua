@@ -63,3 +63,10 @@ map("n", "<leader>gtd", function()
 	require("gitsigns").toggle_deleted()
 end, { desc = "Toggle deleted" })
 
+-- General mappings
+map("n", "<C-h>", "<cmd> TmuxNavigateLeft<CR>", { desc = "window left" })
+map("n", "<C-l>", "<cmd> TmuxNavigateRight<CR>", { desc = "window right" })
+map("n", "<C-j>", "<cmd> TmuxNavigateDown<CR>", { desc = "window down" })
+
+-- Toggle undotree
+map("n", "<leader>u", "<cmd> UndotreeToggle <CR>", { desc = "Toggle undotree" })
