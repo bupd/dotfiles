@@ -2,6 +2,14 @@ modmap:
   - name: main remaps
     remap:
       Ctrl_L: CapsLock
+      KEY_PAGEDOWN: KEY_RESERVED
+      KEY_PAGEUP: KEY_RESERVED
+      KEY_SCROLLLOCK: KEY_RESERVED
+      KEY_PAUSE: KEY_RESERVED
+      KEY_PRINT: KEY_RESERVED
+      KEY_INSERT: KEY_RESERVED
+      KEY_HOME: KEY_RESERVED
+      KEY_END: KEY_RESERVED
       CapsLock:
         held: leftctrl
         alone: esc
