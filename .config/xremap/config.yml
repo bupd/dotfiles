@@ -1,7 +1,8 @@
 modmap:
   - name: main remaps
     remap:
-      Ctrl_L: CapsLock
+      # change tab to ctrl
+      Ctrl_L: Tab
       # unusable keys
       BackSpace: KEY_RESERVED
       KEY_PAGEDOWN: KEY_RESERVED
