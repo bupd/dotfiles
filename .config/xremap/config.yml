@@ -2,6 +2,8 @@ modmap:
   - name: main remaps
     remap:
       Ctrl_L: CapsLock
+      # unusable keys
+      BackSpace: KEY_RESERVED
       KEY_PAGEDOWN: KEY_RESERVED
       KEY_PAGEUP: KEY_RESERVED
       KEY_SCROLLLOCK: KEY_RESERVED
