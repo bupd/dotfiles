@@ -8,8 +8,9 @@ modmap:
       KEY_PAUSE: KEY_RESERVED
       KEY_PRINT: KEY_RESERVED
       KEY_INSERT: KEY_RESERVED
-      KEY_HOME: KEY_RESERVED
-      KEY_END: KEY_RESERVED
+
+      KEY_HOME: KEY_PAGEUP
+      KEY_END: KEY_PAGEDOWN
       CapsLock:
         held: leftctrl
         alone: esc
