@@ -3,6 +3,8 @@ modmap:
     remap:
       # change tab to ctrl
       Ctrl_L: Tab
+      # change tab to backspace
+      Tab: BackSpace
       # unusable keys
       BackSpace: KEY_RESERVED
       KEY_PAGEDOWN: KEY_RESERVED
