@@ -246,7 +246,7 @@ exec_always sudo xremap ~/.config/xremap/config.yml &
 
 exec kitty --single-instance
 exec_always clipmenud
-exec_always source /usr/share/nvm/init-nvm.sh
+# exec_always source /usr/share/nvm/init-nvm.sh
 exec_always xbindkeys
 exec obsidian
 exec_always sleep 4 && env LD_PRELOAD=/usr/lib/spotify-adblock.so spotify &
@@ -256,3 +256,4 @@ exec sleep 2 && brave
 # exec microsoft-edge-stable
 # exec google-chrome-stable
 exec_always ~/go/bin/digital-wellbeing &
+exec_always ~/go/bin/dw &
