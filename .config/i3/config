@@ -242,7 +242,7 @@ bindsym $mod+Control+4 [class="obsidian"] move workspace 4; workspace 4
 bindsym $mod+Control+0 [class="obsidian"] move workspace 10; workspace 10
 
 # start keyboard remap
-exec_always sudo xremap ~/.config/xremap/config.yml &
+exec sudo xremap ~/.config/xremap/config.yml &
 
 exec kitty --single-instance
 exec_always clipmenud
