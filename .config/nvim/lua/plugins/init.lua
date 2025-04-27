@@ -14,6 +14,15 @@ return {
   },
   { "christoomey/vim-tmux-navigator", lazy = false },
 
+  -- file managing , picker etc
+  {
+    "nvim-tree/nvim-tree.lua",
+    cmd = { "NvimTreeToggle", "NvimTreeFocus" },
+    opts = function()
+      return require "configs.nvimtree"
+    end,
+  },
+
   -- gitsigns
   {
     "lewis6991/gitsigns.nvim",
