@@ -66,7 +66,7 @@ return {
           },
           project = {
             base_dirs = {
-              { path = vim.fn.expand("~/.dotfiles"), max_depth = 1 },
+              { path = vim.fn.expand("~/dotfiles"), max_depth = 1 },
               { path = vim.fn.expand("~/code"), max_depth = 3 },
             },
             cd_scope = { "global", "tab", "window" },
