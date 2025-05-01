@@ -1,4 +1,5 @@
 return {
+  -- stolen from https://github.com/fredrikaverpil/dotfiles/blob/main/nvim-fredrik/lua/fredrik/plugins/core/telescope.lua
 
   {
     "nvim-telescope/telescope.nvim",
