@@ -7,10 +7,23 @@ vim.cmd("set guicursor=n-v-c:block-Cursor-blinkwait1000-blinkon500-blinkoff300")
 -- turn off swap file
 vim.opt.swapfile = false
 
--- remove redundant trailing whitespace
-vim.api.nvim_create_autocmd({ "BufWritePre" }, {
-  pattern = { "*" },
-  command = [[%s/\s\+$//e]],
+-- -- remove redundant trailing whitespace
+-- vim.api.nvim_create_autocmd({ "BufWritePre" }, {
+--   pattern = { "*" },
+--   command = [[%s/\s\+$//e]],
+-- })
+-- Remove trailing whitespace in mardoown only
+vim.api.nvim_create_autocmd("BufWritePre", {
+  pattern = "*", -- apply to all files initially
+  callback = function()
+    -- Ignore markdown files
+    if vim.bo.filetype == "markdown" then
+      return
+    end
+
+    -- Remove trailing whitespace
+    vim.cmd([[%s/\s\+$//e]])
+  end,
 })
 
 -- jump to errors
