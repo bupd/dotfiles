@@ -56,18 +56,30 @@
 # Move mouse up with Ctrl + Shift + k
 "xdotool mousemove_relative -- 0 -15"
     Mod4+Super_L+k
+# Fast movement
+"xdotool mousemove_relative -- 0 -35"
+    Mod4+Super_L+Shift+k
 
 # Move mouse down with Ctrl + Shift + j
 "xdotool mousemove_relative -- 0 15"
     Mod4+Super_L+j
+# Fast movement
+"xdotool mousemove_relative -- 0 35"
+    Mod4+Super_L+Shift+j
 
 # Move mouse left with Ctrl + Shift + h
 "xdotool mousemove_relative -- -15 0"
     Mod4+Super_L+h
+# Fast movement
+"xdotool mousemove_relative -- -35 0"
+    Mod4+Super_L+Shift+h
 
 # Move mouse right with Ctrl + Shift + l
 "xdotool mousemove_relative -- 15 0"
     Mod4+Super_L+l
+# Fast movement
+"xdotool mousemove_relative -- 35 0"
+    Mod4+Super_L+Shift+l
 
 # Left mouse click with Ctrl + Shift + Enter
 "xdotool click 1"
