@@ -55,56 +55,35 @@
 ##################################
 # Move mouse up with Ctrl + Shift + k
 "xdotool mousemove_relative -- 0 -15"
-    Control+Shift+k
+    Mod4+Super_L+k
 
 # Move mouse down with Ctrl + Shift + j
 "xdotool mousemove_relative -- 0 15"
-    Control+Shift+j
-
-"xdotool mousemove_relative -- 0 15"
-    Super_L+j
+    Mod4+Super_L+j
 
 # Move mouse left with Ctrl + Shift + h
 "xdotool mousemove_relative -- -15 0"
-    Control+Shift+h
-
-"xdotool mousemove_relative -- -15 0"
-    Super_L+h
+    Mod4+Super_L+h
 
 # Move mouse right with Ctrl + Shift + l
 "xdotool mousemove_relative -- 15 0"
-    Control+Shift+l
-
-"xdotool mousemove_relative -- 15 0"
-    Super_L+l
+    Mod4+Super_L+l
 
 # Left mouse click with Ctrl + Shift + Enter
 "xdotool click 1"
-  Shift+Control+Return
-
-"xdotool click 1"
-  Super_L+Return
+  Mod4+Super_L+Return
 
 # Right mouse click with Ctrl + Shift + i
 "xdotool click 3"
-  Shift+Control+i
-
-"xdotool click 3"
-  Super_L+i
+  Mod4+Super_L+i
 
 # Mouse scroll up with Ctrl + Shift + u
 "xdotool click 4"
-  Shift+Control+u
-
-"xdotool click 4"
-  Super_L+u
+  Mod4+Super_L+u
 
 # Mouse scroll up with Ctrl + Shift + o
 "xdotool click 5"
-  Shift+Control+o
-
-"xdotool click 5"
-  Super_L+o
+  Mod4+Super_L+o
 
 ##################################
 # End of user config #
