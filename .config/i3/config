@@ -58,7 +58,7 @@ floating_modifier $mod
 tiling_drag modifier titlebar
 
 # start a terminal
-bindsym $mod+Return exec kitty --single-instance
+bindsym $mod+Return exec alacritty
 
 # kill focused window
 bindsym $mod+Shift+q kill
@@ -244,7 +244,7 @@ bindsym $mod+Control+0 [class="obsidian"] move workspace 10; workspace 10
 # start keyboard remap
 exec sudo xremap ~/.config/xremap/config.yml &
 
-exec kitty --single-instance
+exec alacritty
 exec_always clipmenud
 # exec_always source /usr/share/nvm/init-nvm.sh
 exec_always xbindkeys
