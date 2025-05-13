@@ -7,7 +7,7 @@ required_programs=(
     "i3"
     "i3status"
     "fzf"
-    "kitty"
+    "alacritty"
     "xdotool"
     "xbindkeys"
     "tmux"
