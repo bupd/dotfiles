@@ -71,3 +71,11 @@ map("n", "<C-j>", "<cmd> TmuxNavigateDown<CR>", { desc = "window down" })
 -- Toggle undotree
 map("n", "<leader>u", "<cmd> UndotreeToggle <CR>", { desc = "Toggle undotree" })
 map("n", "<leader>tt", ":lua require('base46').toggle_transparency()<CR>", { noremap = true, silent = true, desc = "Toggle Background Transparency" })
+
+-- sops
+local sops = require("sops")
+vim.keymap.set("n", "<leader>se", function() sops.encrypt(0) end, { desc = "SOPS Encrypt Buffer" })
+vim.keymap.set("n", "<leader>sd", function() sops.decrypt(0) end, { desc = "SOPS Decrypt Buffer" })
+vim.keymap.set("n", "<leader>sx", function() sops.edit(0) end, { desc = "SOPS Edit Buffer" })
+vim.keymap.set("n", "<leader>sv", function() sops.view(0) end, { desc = "SOPS View Buffer" })
+
