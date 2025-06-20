@@ -128,6 +128,9 @@ export PATH="$PATH:$(go env GOBIN):$(go env GOPATH)/bin"
 
 eval "$(go env)"
 
+## for talosctl
+eval "$(talosctl completion zsh)"
+
 # Shell integrations
 eval "$(fzf --zsh)"
 
