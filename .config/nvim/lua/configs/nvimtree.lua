@@ -6,7 +6,7 @@ return {
     custom = {},
     exclude = {},
   },
-  disable_netrw = true,
+  disable_netrw = false,
   hijack_cursor = true,
   sync_root_with_cwd = true,
   update_focused_file = {
@@ -15,7 +15,7 @@ return {
   },
   view = {
     width = 30,
-    preserve_window_proportions = true,
+    preserve_window_proportions = false,
   },
   git = {
     enable = true,
