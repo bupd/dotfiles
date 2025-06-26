@@ -5,10 +5,10 @@ local lspconfig = require "lspconfig"
 
 -- EXAMPLE
 local servers = {
+  "pylsp",
 	"html",
 	"astro",
 	"ts_ls",
-	"pyright",
 	"gopls",
 	"angularls",
 	"tailwindcss",
