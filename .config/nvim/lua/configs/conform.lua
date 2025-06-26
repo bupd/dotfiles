@@ -3,6 +3,7 @@ local options = {
     lua = { "stylua" },
     css = { "prettierd" },
     html = { "prettierd" },
+    python = { "ruff", "isort" },
     -- Conform will run multiple formatters sequentially
     go = { "goimports", "gofmt" },
     -- Conform will run the first available formatter
