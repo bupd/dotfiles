@@ -87,3 +87,9 @@ vim.keymap.set("n", "<leader>air", function() supermaven.restart() end, { desc =
 vim.keymap.set("n", "<leader>aii", function() supermaven.is_running() end, { desc = "Is maven Running" })
 vim.keymap.set("n", "<leader>aiu", function() supermaven.use_free_version() end, { desc = "Use Free maven" })
 
+-- jump to things
+vim.keymap.set("n", "<leader>vws", function() vim.lsp.buf.workspace_symbol() end, { desc = "open workspace_symbol" })
+vim.keymap.set("n", "<leader>vd", function() vim.diagnostic.open_float() end, { desc = "goto diagnostic" })
+vim.keymap.set("n", "<leader>vca", function() vim.lsp.buf.code_action() end, { desc = "code action" })
+vim.keymap.set("n", "<leader>vrr", function() vim.lsp.buf.references() end, { desc = "goto references" })
+vim.keymap.set("n", "<leader>vrn", function() vim.lsp.buf.rename() end, { desc = "rename with lsp" })
