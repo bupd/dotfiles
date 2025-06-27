@@ -81,3 +81,9 @@ vim.keymap.set("n", "<leader>sd", function() sops.decrypt(0) end, { desc = "SOPS
 vim.keymap.set("n", "<leader>sx", function() sops.edit(0) end, { desc = "SOPS Edit Buffer" })
 vim.keymap.set("n", "<leader>sv", function() sops.view(0) end, { desc = "SOPS View Buffer" })
 
+-- Toggle ai up and down
+local supermaven = require("supermaven-nvim.api")
+vim.keymap.set("n", "<leader>air", function() supermaven.restart() end, { desc = "Restart maven" })
+vim.keymap.set("n", "<leader>aii", function() supermaven.is_running() end, { desc = "Is maven Running" })
+vim.keymap.set("n", "<leader>aiu", function() supermaven.use_free_version() end, { desc = "Use Free maven" })
+
