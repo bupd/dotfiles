@@ -1,4 +1,5 @@
-return {
-  "fatih/vim-go",
-  ft = { "go" },
-}
+-- not a pretty good plugin, lot of side effects
+-- return {
+--   "fatih/vim-go",
+--   ft = { "go" },
+-- }
