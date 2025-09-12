@@ -3,3 +3,4 @@
 --   "fatih/vim-go",
 --   ft = { "go" },
 -- }
+return {}
