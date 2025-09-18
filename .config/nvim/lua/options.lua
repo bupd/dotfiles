@@ -16,18 +16,15 @@ vim.opt.backup = false
 vim.opt.undodir = os.getenv("HOME") .. "/.vim/undodir"
 vim.opt.undofile = true
 
-vim.opt.hlsearch = false
+vim.opt.hlsearch = true
 vim.opt.incsearch = true
 
 vim.opt.termguicolors = true
-vim.notify("This is an error message", "error")
 vim.opt.scrolloff = 8
 vim.opt.signcolumn = "yes"
 vim.opt.isfname:append("@-@")
 
 vim.opt.updatetime = 50
-
-vim.opt.colorcolumn = "80"
 
 -- -- remove redundant trailing whitespace
 -- vim.api.nvim_create_autocmd({ "BufWritePre" }, {
@@ -51,6 +48,10 @@ vim.api.nvim_create_autocmd("BufWritePre", {
 -- jump to errors
 vim.keymap.set("n", "]g", vim.diagnostic.goto_next)
 vim.keymap.set("n", "[g", vim.diagnostic.goto_prev)
+
+-- Resize quickfix window height
+vim.keymap.set("n", "<leader>=", ":resize +5<CR>", { desc = "Increase quickfix height" })
+vim.keymap.set("n", "<leader>-", ":resize -5<CR>", { desc = "Decrease quickfix height" })
 
 -- Remove current item from quickfix list and adjust navigation
 function RemoveQFItem()
@@ -112,6 +113,13 @@ autocmd("BufReadPost", {
     end
   end,
 })
+
+local orig_util_open_floating_preview = vim.lsp.util.open_floating_preview
+function vim.lsp.util.open_floating_preview(contents, syntax, opts, ...)
+  opts = opts or {}
+  opts.border = opts.border or border
+  return orig_util_open_floating_preview(contents, syntax, opts, ...)
+end
 
 -- Show Nvdash when all buffers are closed
 -- vim.api.nvim_create_autocmd("BufDelete", {
@@ -183,5 +191,5 @@ autocmd("BufReadPost", {
 -- vim.api.nvim_set_hl(0, "IndentLine", { link = "Comment" })
 --
 -- -- Inlay hints
--- vim.lsp.inlay_hint.enable(true)
+vim.lsp.inlay_hint.enable(true)
 --
