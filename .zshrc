@@ -129,7 +129,7 @@ export PATH="$PATH:$(go env GOBIN):$(go env GOPATH)/bin"
 eval "$(go env)"
 
 ## for talosctl
-eval "$(talosctl completion zsh)"
+# eval "$(talosctl completion zsh)"
 
 # Shell integrations
 eval "$(fzf --zsh)"
@@ -175,20 +175,20 @@ watchtime="~/dotfiles/scripts/watchtime"
 # source /usr/share/nvm/init-nvm.sh
 
 # Automatically notify after each command finishes with context
-function notify_after_command() {
-  # Capture the last executed command
-  local cmd=$(fc -ln -1)  # Get the last command executed
-
-  # Check if the last command was successful or failed
-  if [ $? -eq 0 ]; then
-    notify-send -t 8 "Complete" "Command: '$cmd' has finished successfully."
-  else
-    notify-send "Task Failed" "Command: '$cmd' failed."
-  fi
-}
+# function notify_after_command() {
+#   # Capture the last executed command
+#   local cmd=$(fc -ln -1)  # Get the last command executed
+#
+#   # Check if the last command was successful or failed
+#   if [ $? -eq 0 ]; then
+#     notify-send -t 8 "Complete" "Command: '$cmd' has finished successfully."
+#   else
+#     notify-send "Task Failed" "Command: '$cmd' failed."
+#   fi
+# }
 
 # Call the function after each command
-PROMPT_COMMAND="notify_after_command"
+# PROMPT_COMMAND="notify_after_command"
 
 precmd() { eval "$PROMPT_COMMAND" }
 
