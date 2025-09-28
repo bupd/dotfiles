@@ -247,13 +247,13 @@ bindsym $mod+Control+0 [class="obsidian"] move workspace 10; workspace 10
 exec alacritty
 exec_always clipmenud
 # exec_always source /usr/share/nvm/init-nvm.sh
-exec_always xbindkeys
-exec obsidian
-exec_always sleep 4 && env LD_PRELOAD=/usr/lib/spotify-adblock.so spotify &
-exec sleep 2 && brave
+# exec_always xbindkeys
+# exec obsidian
+# exec_always sleep 4 && env LD_PRELOAD=/usr/lib/spotify-adblock.so spotify &
+# exec sleep 2 && brave
 # exec discord
 # exec slack
 # exec microsoft-edge-stable
 # exec google-chrome-stable
-exec_always ~/go/bin/digital-wellbeing &
-exec_always ~/go/bin/dw &
+# exec_always ~/go/bin/digital-wellbeing &
+# exec_always ~/go/bin/dw &
