@@ -2,6 +2,10 @@ local dap_go = require "dap-go"
 local dap = require "dap"
 local dap_ui = require "dapui"
 
+require("mason-nvim-dap").setup({
+    ensure_installed = { "delve" }
+})
+
 dap_go.setup()
 -- For One
 table.insert(dap.configurations.go, {
