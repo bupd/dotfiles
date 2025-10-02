@@ -1,25 +1,39 @@
-local dap_go = require("dap-go")
-local dap = require("dap")
-local dap_ui = require("dapui")
+local dap = require "dap"
+local dap_go = require "dap-go"
+local dap_ui = require "dapui"
 
 -- Ensure delve is installed
-require("mason-nvim-dap").setup({
+require("mason-nvim-dap").setup {
   ensure_installed = { "delve" },
-})
+}
 
--- dap-go sets up normal local debugging for you
+-- Setup dap-go for default local debugging configs
 dap_go.setup()
 
--- Remote debugging: One container
+-- Custom remote/local attach (manual dlv dap)
 table.insert(dap.configurations.go, {
-  type = "go",                -- uses dap-go adapter
-  name = "One CONTAINER debugging",
-  mode = "remote",
+  type = "go",
+  name = "Attach dlv basic goauth",
   request = "attach",
-  host = "127.0.0.1",          -- or container IP if not port-forwarded
-  port = 4001,                 -- must match dlv server
+  mode = "remote", -- attach mode
+  host = "127.0.0.1", -- dlv is running locally
+  port = 4001, -- the port you ran dlv on
+  cwd = "/home/bupd/code/pp/goauth", -- the folder dlv is running in
+  -- No substitutePath needed, paths are identical
+})
+
+-- Remote harbor-core inside container
+table.insert(dap.configurations.go, {
+  type = "go",
+  name = "Attach dlv harbor-core",
+  request = "attach",
+  mode = "remote",
+  host = "127.0.0.1", -- host port-forward
+  port = 4002, -- host port mapped to container 4001
+  cwd = "/home/bupd/code/8gears/harbor/src/core", -- host source folder
   substitutePath = {
-    { from = "/app", to = "${workspaceFolder}" }, -- container path -> local
+    { from = "/core", to = "/home/bupd/code/8gears/harbor/src/core" },
+    -- container binary path → host source folder
   },
 })
 
