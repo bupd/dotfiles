@@ -1,20 +1,21 @@
 return {
   "jay-babu/mason-nvim-dap.nvim",
-  dependencies = "mason.nvim",
+  dependencies = {
+    "williamboman/mason.nvim",      -- mason
+    "mfussenegger/nvim-dap",        -- dap itself (usually required)
+  },
   cmd = { "DapInstall", "DapUninstall" },
   opts = {
-    -- Makes a best effort to setup the various debuggers with
-    -- reasonable debug configurations
+    -- Automatically install configured debuggers
     automatic_installation = true,
 
-    -- You can provide additional configuration to the handlers,
-    -- see mason-nvim-dap README for more information
+    -- Optional handlers for extra setup
     handlers = {},
 
-    -- You'll need to check that you have the required things installed
-    -- online, please don't ask me how to install them :)
+    -- Ensure delve (Go debugger) is installed
     ensure_installed = { "delve" },
   },
-  -- mason-nvim-dap is loaded when nvim-dap loads
-  config = function() end,
+  config = function(_, opts)
+    require("mason-nvim-dap").setup(opts) -- setup with opts
+  end,
 }
