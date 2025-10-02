@@ -11,6 +11,6 @@ return {
     require("dap-go").setup()
   end,
   opts = function()
-    return require "myconfig"
+    return require "configs.dap"
   end,
 }
