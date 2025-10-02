@@ -39,10 +39,10 @@ return {
     },
   },
   -- lazyvim.plugins.ui
-  {
-    "noice.nvim",
-    opts = {
-      presets = { lsp_doc_border = true },
-    },
-  },
+  -- {
+  --   -- "noice.nvim",
+  --   opts = {
+  --     presets = { lsp_doc_border = true },
+  --   },
+  -- },
 }
