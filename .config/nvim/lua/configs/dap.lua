@@ -40,6 +40,21 @@ table.insert(dap.configurations.go, {
 -- Remote check dap inside container via dlv dap
 table.insert(dap.configurations.go, {
   type = "go",
+  name = "Attach dlv testing",
+  request = "launch",        -- dlv dap expects launch
+  mode = "exec",             -- run an already compiled binary
+  program = "/home/bupd/code/pp/goauth/core",         -- binary inside container
+  cwd = "/home/bupd/code/pp/goauth",             -- working directory inside container
+  host = "127.0.0.1",        -- connect to port-forwarded host
+  port = 4002,               -- host port
+  substitutePath = {
+    { from = "/home/bupd/code/pp/goauth/", to = "/home/bupd/code/pp/goauth/" }, -- container binary → local source
+  },
+})
+
+-- Remote check dap inside container via dlv dap
+table.insert(dap.configurations.go, {
+  type = "go",
   name = "DAP Remote Attach dlv harbor-core",
   request = "launch",        -- dlv dap expects launch
   mode = "exec",             -- run an already compiled binary
@@ -55,22 +70,6 @@ table.insert(dap.configurations.go, {
     -- { from = "/src/src/core", to = "/home/bupd/code/8gears/harbor/src/core" },
   },
 })
-
--- Remote check dap inside container via dlv dap
-table.insert(dap.configurations.go, {
-  type = "go",
-  name = "Attach DAP dlv testing",
-  request = "launch",        -- dlv dap expects launch
-  mode = "exec",             -- run an already compiled binary
-  program = "/home/bupd/code/pp/goauth/core",         -- binary inside container
-  cwd = "/home/bupd/code/pp/goauth",             -- working directory inside container
-  host = "127.0.0.1",        -- connect to port-forwarded host
-  port = 4002,               -- host port
-  substitutePath = {
-    { from = "/home/bupd/code/pp/goauth/", to = "/home/bupd/code/pp/goauth/" }, -- container binary → local source
-  },
-})
-
 
 -- dap-ui setup
 dap_ui.setup {
