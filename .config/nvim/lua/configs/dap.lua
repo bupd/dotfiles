@@ -25,7 +25,7 @@ table.insert(dap.configurations.go, {
 -- Remote harbor-core inside container
 table.insert(dap.configurations.go, {
   type = "go",
-  name = "Attach dlv harbor-core",
+  name = "Attach dlv",
   request = "attach",
   mode = "remote",
   host = "127.0.0.1", -- host port-forward
@@ -40,7 +40,7 @@ table.insert(dap.configurations.go, {
 -- Remote check dap inside container via dlv dap
 table.insert(dap.configurations.go, {
   type = "go",
-  name = "DAP Attach dlv testing",
+  name = "Attach DAP dlv testing",
   request = "launch",        -- dlv dap expects launch
   mode = "exec",             -- run an already compiled binary
   program = "/home/bupd/code/pp/goauth/core",         -- binary inside container
