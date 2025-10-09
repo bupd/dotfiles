@@ -231,7 +231,7 @@ assign [class="Google-chrome"] $ws3
 assign [class="whatsapp-electron"] $ws4
 assign [class="obsidian"] $ws10
 assign [class="obs"] $ws9
-# assign [class="Spotify"] $ws7
+assign [class="Spotify"] $ws7
 assign [class="Slack"] $ws8
 assign [class="discord"] $ws9
 
@@ -249,7 +249,7 @@ exec_always clipmenud
 # exec_always source /usr/share/nvm/init-nvm.sh
 exec_always xbindkeys
 exec obsidian
-# exec_always sleep 4 && env LD_PRELOAD=/usr/lib/spotify-adblock.so spotify &
+exec_always sleep 4 && env LD_PRELOAD=/usr/lib/spotify-adblock.so spotify &
 exec sleep 2 && brave
 # exec discord
 # exec slack
