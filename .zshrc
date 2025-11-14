@@ -189,3 +189,7 @@ PROMPT_COMMAND="notify_after_command"
 
 precmd() { eval "$PROMPT_COMMAND" }
 
+# podman configs for k3d
+XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
+export DOCKER_HOST=unix://$XDG_RUNTIME_DIR/podman/podman.sock
+export DOCKER_SOCK=$XDG_RUNTIME_DIR/podman/podman.sock
