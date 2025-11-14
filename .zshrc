@@ -163,6 +163,9 @@ alias buildharborcore="make check_environment versions_prepare compile_core && d
 alias buildharbor-jobservice="make check_environment versions_prepare compile_jobservice && docker build --build-arg harbor_base_image_version=dev --build-arg harbor_base_namespace=goharbor -f make/photon/jobservice/Dockerfile -t goharbor/harbor-jobservice:dev ."
 alias buildharbor-registry="make check_environment versions_prepare compile_registryctl && docker build --build-arg harbor_base_image_version=dev --build-arg harbor_base_namespace=goharbor -f make/photon/registryctl/Dockerfile -t goharbor/harbor-registryctl:dev ."
 
+# for k3d
+alias kd="k3d"
+
 ## add alias for your own scripts
 airdopes="~/dotfiles/scripts/airdopes"
 cputemp="~/dotfiles/scripts/cputemp"
