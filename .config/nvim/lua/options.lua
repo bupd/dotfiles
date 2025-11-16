@@ -157,7 +157,7 @@ end
 -- o.showmode = false
 -- o.swapfile = false
 --
--- -- o.clipboard = "unnamedplus"
+vim.opt.clipboard = "unnamedplus"
 --
 -- -- Indenting
 -- o.expandtab = true
