@@ -196,3 +196,10 @@ precmd() { eval "$PROMPT_COMMAND" }
 XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
 export DOCKER_HOST=unix://$XDG_RUNTIME_DIR/podman/podman.sock
 export DOCKER_SOCK=$XDG_RUNTIME_DIR/podman/podman.sock
+eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+
+export PATH="$PATH:/home/bupd/.local/bin"
+
+# for ccmanager - claude code
+export CCMANAGER_MULTI_PROJECT_ROOT=/home/bupd/code
+alias cc="ccmanager --multi-project"
