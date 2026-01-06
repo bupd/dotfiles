@@ -1,2 +1,3 @@
-./pactl.sh
+#!/bin/sh
+"$HOME/pactl.sh"
 # screenkey &

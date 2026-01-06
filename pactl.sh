@@ -1,34 +1,22 @@
 #!/bin/sh
 
-# Get the sink number for the specified sink name
-# Fill in your appropriate sink name by executing
-# $(pactl list short sinks) and pick RUNNING
-sink_name="alsa_output.pci-0000_0c_00.4.analog-stereo"
-sink_number=$(pactl list short sinks | grep "RUNNING" | awk '{print $1}')
+# Get the Razer headset sink name
+sink_name=$(pactl list short sinks | grep "Razer" | awk '{print $2}')
+echo "Using sink: $sink_name"
 
-# Display the result
-echo "Sink number for $sink_name: $sink_number"
+# Create two null sinks for separate OBS capture
+pactl load-module module-null-sink sink_name=null_music sink_properties=device.description="Music-Capture"
+pactl load-module module-null-sink sink_name=null_out sink_properties=device.description="Desktop-Capture"
+echo "Null sinks created: null_music, null_out"
 
-# Load the module-null-sink and display the new sink ID
-echo -n "Loading module-null-sink... "
-null_sink_id=$(pactl load-module module-null-sink sink_name=music sink_properties=device.description="music")
-null_sink_id2=$(pactl load-module module-null-sink sink_name=out sink_properties=device.description="out")
+# Create combine sink for Spotify (music)
+pactl load-module module-combine-sink sink_name=sink_music sink_properties=device.description="Spotify-Output" slaves="$sink_name",null_music
+echo "sink_music created (for Spotify)"
 
-# Get number of null Sink.
-null_sink_number=$(pactl list short sinks | grep module-null-sink.c | awk 'NR==1{print $1}')
-echo -e "\nNull-Sink Number: ${null_sink_number}"
+# Create combine sink for desktop/Brave (out)
+pactl load-module module-combine-sink sink_name=sink_out sink_properties=device.description="Desktop-Output" slaves="$sink_name",null_out
+echo "sink_out created (for Brave/Desktop)"
 
-null_sink_number2=$(pactl list short sinks | grep module-null-sink.c | awk 'END{print $1}')
-echo -e "\nNull-Sink Number: ${null_sink_number2}"
-
-# Load the module-combine-sink with the desired slaves and display the new sink ID
-echo -n "Loading module-combine-sink with slaves $sink_number and $null_sink_number... "
-echo -n "Loading module-combine-sink with slaves $sink_number and $null_sink_number2... "
-combine_sink_id=$(pactl load-module module-combine-sink sink_name=forOut slaves=$sink_number,$null_sink_number)
-combine_sink_id2=$(pactl load-module module-combine-sink slaves=$sink_number,$null_sink_number2)
-# echo "combined_Sink ID: $combine_sink_id"
-# echo "combined_Sink ID: $combine_sink_id2"
-
-# echo -e "\n thank you boyy..."
-
-
+# Set desktop output as default
+pactl set-default-sink sink_out
+echo "Default sink set to sink_out"
