@@ -258,6 +258,6 @@ exec sleep 2 && brave
 exec_always ~/go/bin/digital-wellbeing &
 exec_always ~/go/bin/dw &
 
-# Speech-to-text
-bindsym Control+backslash exec nerd-dictation begin --vosk-model-dir=/usr/share/vosk-models/small-en-us --timeout 3
-bindsym Shift+Delete exec nerd-dictation end
+# Speech-to-text (notification ID 9999 is unique to this)
+bindsym Control+backslash exec --no-startup-id ~/dotfiles/scripts/stt-start.sh
+bindsym Shift+Delete exec --no-startup-id ~/dotfiles/scripts/stt-stop.sh
