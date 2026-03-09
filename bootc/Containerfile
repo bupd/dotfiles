@@ -157,8 +157,7 @@ RUN mkdir -p /var/home/bupd/.ssh && chmod 700 /var/home/bupd/.ssh && \
     mkdir -p /var/home/bupd/code && chown bupd:bupd /var/home/bupd/code
 
 # Bun
-RUN BUN_NO_MODIFY_PATH=1 curl -fsSL https://bun.sh/install | bash && \
-    mv /root/.bun /usr/local/share/bun && \
+RUN BUN_INSTALL=/usr/local/share/bun curl -fsSL https://bun.sh/install | bash && \
     ln -sf /usr/local/share/bun/bin/bun /usr/local/bin/bun && \
     ln -sf /usr/local/share/bun/bin/bunx /usr/local/bin/bunx
 
