@@ -48,8 +48,83 @@ RUN --mount=type=tmpfs,dst=/tmp --mount=type=cache,dst=/usr/lib/sysimage/cache/p
     man-db \
     && pacman -S --clean --noconfirm
 
+# ESP sync script - fixes bootc not updating EFI partition on Arch
+COPY --chmod=0755 <<'ESPFIX' /usr/local/bin/bootc-sync-esp.sh
+#!/bin/bash
+set -euo pipefail
+
+ESP="/boot/efi"
+BOOT="/boot"
+
+# Ensure ESP is mounted
+if ! mountpoint -q "$ESP"; then
+    EFI_PART=$(blkid -t PARTLABEL="EFI System" -o device 2>/dev/null | head -1)
+    if [ -z "$EFI_PART" ]; then
+        EFI_PART=$(blkid -t TYPE="vfat" -o device 2>/dev/null | head -1)
+    fi
+    if [ -n "$EFI_PART" ]; then
+        mount "$EFI_PART" "$ESP"
+    else
+        echo "bootc-sync-esp: no EFI partition found"
+        exit 1
+    fi
+fi
+
+# Install systemd-boot binary
+mkdir -p "$ESP/EFI/BOOT" "$ESP/EFI/systemd"
+cp /usr/lib/systemd/boot/efi/systemd-bootx64.efi "$ESP/EFI/BOOT/BOOTX64.EFI"
+cp /usr/lib/systemd/boot/efi/systemd-bootx64.efi "$ESP/EFI/systemd/systemd-bootx64.efi"
+
+# Sync loader config
+mkdir -p "$ESP/loader/entries"
+printf 'default ostree-1.conf\ntimeout 5\n' > "$ESP/loader/loader.conf"
+
+# Find the current loader entry
+LOADER_DIR=$(readlink -f "$BOOT/loader" 2>/dev/null || echo "$BOOT/loader.1")
+if [ -d "$LOADER_DIR/entries" ]; then
+    cp "$LOADER_DIR/entries"/*.conf "$ESP/loader/entries/"
+    # Fix paths: boot entries reference /boot/ostree/ but on ESP it's /ostree/
+    sed -i 's|/boot/ostree/|/ostree/|g' "$ESP/loader/entries/"*.conf
+fi
+
+# Sync kernel and initramfs
+for OSTREE_DIR in "$BOOT"/ostree/default-*; do
+    if [ -d "$OSTREE_DIR" ]; then
+        DEST="$ESP/ostree/$(basename "$OSTREE_DIR")"
+        mkdir -p "$DEST"
+        # Remove old kernels from ESP that don't match current deployments
+        for OLD_DIR in "$ESP"/ostree/default-*; do
+            if [ -d "$OLD_DIR" ] && [ "$(basename "$OLD_DIR")" != "$(basename "$OSTREE_DIR")" ]; then
+                rm -rf "$OLD_DIR"
+            fi
+        done
+        cp "$OSTREE_DIR"/vmlinuz-* "$DEST/" 2>/dev/null || true
+        cp "$OSTREE_DIR"/initramfs-* "$DEST/" 2>/dev/null || true
+    fi
+done
+
+echo "bootc-sync-esp: ESP synced successfully"
+ESPFIX
+
+# Systemd service to sync ESP on every boot
+COPY --chmod=0644 <<'UNIT' /usr/lib/systemd/system/bootc-sync-esp.service
+[Unit]
+Description=Sync bootc bootloader to EFI System Partition
+DefaultDependencies=no
+After=local-fs.target
+Before=sysinit.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/bootc-sync-esp.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=sysinit.target
+UNIT
+
 # Enable services
-RUN systemctl enable sshd systemd-networkd systemd-resolved systemd-timesyncd tailscaled qemu-guest-agent serial-getty@ttyS0
+RUN systemctl enable sshd systemd-networkd systemd-resolved systemd-timesyncd tailscaled qemu-guest-agent serial-getty@ttyS0 bootc-sync-esp
 
 # Timezone and locale
 RUN ln -sf /usr/share/zoneinfo/UTC /etc/localtime && \
