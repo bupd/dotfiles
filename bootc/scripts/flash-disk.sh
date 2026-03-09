@@ -80,7 +80,7 @@ else
     echo "##   resize2fs ${DISK}<N>"
 fi
 
-# Fix EFI bootloader (bootc doesn't always install it)
+# Fix EFI bootloader (bootc doesn't sync ESP on Arch)
 echo ""
 echo "## Fixing EFI bootloader"
 mount "$ROOT_PART" /mnt
@@ -88,36 +88,54 @@ EFI_PART=$(fdisk -l "$DISK" 2>/dev/null | grep "EFI System" | awk '{print $1}')
 
 if [ -n "$EFI_PART" ]; then
     mount "$EFI_PART" /mnt/boot/efi
+    ESP=/mnt/boot/efi
 
-    # Find the ostree deployment
-    DEPLOY=$(ls -d /mnt/ostree/deploy/default/deploy/*.0 2>/dev/null | head -1)
+    # Find the latest ostree deployment
+    DEPLOY=$(ls -dt /mnt/ostree/deploy/default/deploy/*.0 2>/dev/null | head -1)
 
     if [ -n "$DEPLOY" ]; then
         # Install systemd-boot EFI binary
-        mkdir -p /mnt/boot/efi/EFI/BOOT /mnt/boot/efi/EFI/systemd
-        cp "$DEPLOY/usr/lib/systemd/boot/efi/systemd-bootx64.efi" /mnt/boot/efi/EFI/BOOT/BOOTX64.EFI
-        cp "$DEPLOY/usr/lib/systemd/boot/efi/systemd-bootx64.efi" /mnt/boot/efi/EFI/systemd/systemd-bootx64.efi
+        mkdir -p "$ESP/EFI/BOOT" "$ESP/EFI/systemd"
+        cp "$DEPLOY/usr/lib/systemd/boot/efi/systemd-bootx64.efi" "$ESP/EFI/BOOT/BOOTX64.EFI"
+        cp "$DEPLOY/usr/lib/systemd/boot/efi/systemd-bootx64.efi" "$ESP/EFI/systemd/systemd-bootx64.efi"
 
-        # Copy loader config to ESP
-        mkdir -p /mnt/boot/efi/loader/entries
-        printf 'default ostree-1.conf\ntimeout 5\n' > /mnt/boot/efi/loader/loader.conf
-
-        if [ -f /mnt/boot/loader.1/entries/ostree-1.conf ]; then
-            cp /mnt/boot/loader.1/entries/ostree-1.conf /mnt/boot/efi/loader/entries/
-            sed -i 's|/boot/ostree/|/ostree/|g' /mnt/boot/efi/loader/entries/ostree-1.conf
+        # Find the active loader directory (follows the symlink)
+        LOADER_DIR=$(readlink -f /mnt/boot/loader 2>/dev/null)
+        if [ ! -d "$LOADER_DIR" ]; then
+            # Fallback: try loader.0 then loader.1
+            for d in /mnt/boot/loader.0 /mnt/boot/loader.1; do
+                if [ -d "$d/entries" ]; then LOADER_DIR="$d"; break; fi
+            done
         fi
 
-        # Copy kernel and initramfs to ESP
-        OSTREE_BOOT_DIR=$(ls -d /mnt/boot/ostree/default-* 2>/dev/null | head -1)
-        if [ -n "$OSTREE_BOOT_DIR" ]; then
-            DEST_DIR="/mnt/boot/efi/ostree/$(basename "$OSTREE_BOOT_DIR")"
-            mkdir -p "$DEST_DIR"
-            cp "$OSTREE_BOOT_DIR"/vmlinuz-* "$DEST_DIR/"
-            cp "$OSTREE_BOOT_DIR"/initramfs-* "$DEST_DIR/"
+        # Sync all loader entries to ESP
+        mkdir -p "$ESP/loader/entries"
+        rm -f "$ESP/loader/entries/"*.conf
+        if [ -d "$LOADER_DIR/entries" ]; then
+            cp "$LOADER_DIR/entries/"*.conf "$ESP/loader/entries/"
+            sed -i 's|/boot/ostree/|/ostree/|g' "$ESP/loader/entries/"*.conf
+
+            # Default to highest version entry
+            DEFAULT_ENTRY=$(ls -1 "$ESP/loader/entries/" | sort -t- -k1 -rV | head -1)
+            printf "default %s\ntimeout 5\n" "$DEFAULT_ENTRY" > "$ESP/loader/loader.conf"
         fi
+
+        # Sync all kernels and initramfs to ESP
+        rm -rf "$ESP/ostree"
+        for OSTREE_BOOT_DIR in /mnt/boot/ostree/default-*; do
+            if [ -d "$OSTREE_BOOT_DIR" ]; then
+                DEST_DIR="$ESP/ostree/$(basename "$OSTREE_BOOT_DIR")"
+                mkdir -p "$DEST_DIR"
+                cp "$OSTREE_BOOT_DIR"/vmlinuz-* "$DEST_DIR/" 2>/dev/null || true
+                cp "$OSTREE_BOOT_DIR"/initramfs-* "$DEST_DIR/" 2>/dev/null || true
+            fi
+        done
 
         echo "## EFI bootloader installed"
-        ls -la /mnt/boot/efi/EFI/BOOT/
+        echo "## Loader config:"
+        cat "$ESP/loader/loader.conf"
+        echo "## Entries:"
+        ls "$ESP/loader/entries/"
     else
         echo "## WARNING: No ostree deployment found"
     fi
