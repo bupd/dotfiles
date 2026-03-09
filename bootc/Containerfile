@@ -59,7 +59,7 @@ RUN K3S_VERSION=$(curl -sfL https://update.k3s.io/v1-release/channels/stable | j
     ln -sf /usr/local/bin/k3s /usr/local/bin/ctr
 
 # k3s systemd service
-COPY --chmod=0644 <<'K3SUNIT' /usr/lib/systemd/system/k3s.service
+RUN cat <<'K3SUNIT' > /usr/lib/systemd/system/k3s.service
 [Unit]
 Description=Lightweight Kubernetes
 Documentation=https://k3s.io
@@ -95,7 +95,7 @@ RUN ufw default deny incoming && \
     ufw enable
 
 # ESP sync script - fixes bootc not updating EFI partition on Arch
-COPY --chmod=0755 <<'ESPFIX' /usr/local/bin/bootc-sync-esp.sh
+RUN cat <<'ESPFIX' > /usr/local/bin/bootc-sync-esp.sh
 #!/bin/bash
 set -euo pipefail
 
@@ -154,9 +154,10 @@ done
 
 echo "bootc-sync-esp: ESP synced successfully"
 ESPFIX
+RUN chmod +x /usr/local/bin/bootc-sync-esp.sh
 
 # Systemd service to sync ESP on every boot
-COPY --chmod=0644 <<'UNIT' /usr/lib/systemd/system/bootc-sync-esp.service
+RUN cat <<'UNIT' > /usr/lib/systemd/system/bootc-sync-esp.service
 [Unit]
 Description=Sync bootc bootloader to EFI System Partition
 DefaultDependencies=no
@@ -225,7 +226,7 @@ RUN git clone https://github.com/bupd/dotfiles.git /var/home/bupd/dotfiles && \
     chown -R bupd:bupd /var/home/bupd
 
 # Server-specific sessionizer (overrides dotfiles version with correct paths)
-COPY --chown=bupd:bupd <<'SESSIONIZER' /var/home/bupd/sessionizer
+RUN cat <<'SESSIONIZER' > /var/home/bupd/sessionizer
 #!/usr/bin/env bash
 
 if [[ $# -eq 1 ]]; then
@@ -258,7 +259,7 @@ RUN chmod +x /var/home/bupd/sessionizer && \
     chown -R bupd:bupd /var/home/bupd/.local
 
 # Zshrc (not managed by stow per .stow-local-ignore)
-COPY --chown=bupd:bupd <<'ZSHRC' /var/home/bupd/.zshrc
+RUN cat <<'ZSHRC' > /var/home/bupd/.zshrc
 # Include sbin paths
 export PATH="/usr/local/sbin:/usr/sbin:/sbin:$PATH"
 
@@ -375,6 +376,7 @@ export LESS_TERMCAP_us=$'\e[1;4;31m'
 # fzf
 eval "$(fzf --zsh)"
 ZSHRC
+RUN chown bupd:bupd /var/home/bupd/.zshrc /var/home/bupd/sessionizer
 
 LABEL containers.bootc 1
 RUN bootc container lint
