@@ -1,0 +1,99 @@
+name: Build Bootc Image
+
+on:
+  workflow_dispatch:
+
+env:
+  REGISTRY: ${{ vars.REGISTRY }}
+  PROJECT_NAME: ${{ vars.PROJECT_NAME }}
+  REGISTRY_USERNAME: ${{ vars.REGISTRY_USERNAME }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install podman
+        run: sudo apt-get update && sudo apt-get install -y podman
+
+      - name: Login to registry
+        env:
+          REGISTRY_SECRET: ${{ secrets.REGISTRY_SECRET }}
+        run: |
+          podman login "$REGISTRY" \
+            -u "$REGISTRY_USERNAME" \
+            -p "$REGISTRY_SECRET"
+
+      - name: Build base image
+        run: |
+          podman build --network=host \
+            -f bootc/Containerfile.base \
+            -t arch-bootc:latest \
+            bootc/
+
+      - name: Tag base image
+        run: podman tag arch-bootc:latest ghcr.io/bootcrew/arch-bootc:latest
+
+      - name: Build hetzner image
+        run: |
+          podman build --network=host \
+            -f bootc/Containerfile \
+            -t "$REGISTRY/$PROJECT_NAME:latest" \
+            bootc/
+
+      - name: Push image
+        run: podman push "$REGISTRY/$PROJECT_NAME:latest"
+
+  disk:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y podman zstd
+          ORAS_VERSION="1.2.2"
+          curl -sLO "https://github.com/oras-project/oras/releases/download/v${ORAS_VERSION}/oras_${ORAS_VERSION}_linux_amd64.tar.gz"
+          tar -xzf "oras_${ORAS_VERSION}_linux_amd64.tar.gz" oras
+          sudo mv oras /usr/local/bin/
+
+      - name: Login to registry
+        env:
+          REGISTRY_SECRET: ${{ secrets.REGISTRY_SECRET }}
+        run: |
+          podman login "$REGISTRY" \
+            -u "$REGISTRY_USERNAME" \
+            -p "$REGISTRY_SECRET"
+          oras login "$REGISTRY" \
+            -u "$REGISTRY_USERNAME" \
+            -p "$REGISTRY_SECRET"
+
+      - name: Pull container image
+        run: podman pull "$REGISTRY/$PROJECT_NAME:latest"
+
+      - name: Generate bootable disk image
+        run: |
+          fallocate -l 20G bootable.img
+          sudo podman run \
+            --rm --privileged --pid=host --network=host \
+            -v /var/lib/containers:/var/lib/containers \
+            -v /etc/containers:/etc/containers \
+            -v /dev:/dev \
+            -v "$(pwd):/data" \
+            "$REGISTRY/$PROJECT_NAME:latest" \
+            bootc install to-disk \
+            --composefs-backend \
+            --via-loopback /data/bootable.img \
+            --filesystem ext4 \
+            --wipe \
+            --bootloader systemd
+
+      - name: Compress and push disk image
+        run: |
+          zstd bootable.img -o bootable.img.zst
+          oras push "$REGISTRY/$PROJECT_NAME:disk-latest" \
+            bootable.img.zst:application/octet-stream
