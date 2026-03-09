@@ -20,6 +20,14 @@ jobs:
       - name: Install podman
         run: sudo apt-get update && sudo apt-get install -y podman
 
+      - name: Restore podman build cache
+        uses: actions/cache@v4
+        with:
+          path: /var/lib/containers/storage
+          key: podman-build-${{ hashFiles('bootc/Containerfile', 'bootc/Containerfile.base') }}
+          restore-keys: |
+            podman-build-
+
       - name: Login to registry
         env:
           REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
@@ -55,13 +63,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Restore oras cache
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/bin/oras
+          key: oras-1.2.2
+
       - name: Install dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y podman zstd
-          ORAS_VERSION="1.2.2"
-          curl -sLO "https://github.com/oras-project/oras/releases/download/v${ORAS_VERSION}/oras_${ORAS_VERSION}_linux_amd64.tar.gz"
-          tar -xzf "oras_${ORAS_VERSION}_linux_amd64.tar.gz" oras
-          sudo mv oras /usr/local/bin/
+          if [ ! -f /usr/local/bin/oras ]; then
+            ORAS_VERSION="1.2.2"
+            curl -sLO "https://github.com/oras-project/oras/releases/download/v${ORAS_VERSION}/oras_${ORAS_VERSION}_linux_amd64.tar.gz"
+            tar -xzf "oras_${ORAS_VERSION}_linux_amd64.tar.gz" oras
+            sudo mv oras /usr/local/bin/
+          fi
 
       - name: Login to registry
         env:
