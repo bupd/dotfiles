@@ -2,88 +2,90 @@
 ![Header](https://github.com/user-attachments/assets/22c7f4ca-db1c-4ada-8ede-5f2e252fe87e)
 <h1 align="center"> Dotfiles</h1>
 
-This repository contains my personal dotfiles managed using [GNU Stow](https://www.gnu.org/software/stow/manual/stow.html). It includes configuration files for various programs and utilities that I use. The goal is to make it easy to manage and synchronize these files across different systems.
+Personal dotfiles managed with [GNU Stow](https://www.gnu.org/software/stow/manual/stow.html). Includes configs for i3, neovim, tmux, zsh, kitty, and more. Also contains bootc image definitions for running Arch Linux on Hetzner Cloud.
 
-## Setup Instructions
-
-### Check and Install Required Programs
-To ensure that all necessary programs are installed on your system, you can use the following script.
+## Quick Start
 
 ```bash
+git clone https://github.com/bupd/dotfiles.git ~/dotfiles
+cd ~/dotfiles
 ./check_dependencies.sh
+stow --adopt .
 ```
 
-Ensure you have GNU Stow installed on your system. You can typically install it using your package manager:
+## Structure
 
-- On Debian-based systems (Ubuntu, etc.): `sudo apt install stow`
-- On Red Hat-based systems (Fedora, CentOS, etc.): `sudo dnf install stow`
-- On macOS: `brew install stow`
-- On ArchBTW: `sudo pacman -S stow`
+```
+dotfiles/
+  .config/
+    nvim/          # Neovim (NvChad) config
+    tmux/          # Tmux config (prefix: Ctrl-j, vim-tmux-navigator)
+    i3/            # i3 window manager
+    i3status/      # i3 status bar
+    kitty/         # Kitty terminal
+    lazygit/       # Lazygit config
+    xremap/        # Key remapping
+    yt-dlp/        # yt-dlp config
+  bootc/           # Arch Linux bootc image for Hetzner Cloud (not stowed)
+    Containerfile        # Custom image (packages, users, dotfiles)
+    Containerfile.base   # bootcrew/arch-bootc base image
+    scripts/             # Build, flash, verify, post-boot scripts
+  keyboard/        # Corne V3 keyboard layout
+  scripts/         # Utility scripts
+  sessionizer      # Tmux session picker (Ctrl-f in tmux)
+  .p10k.zsh        # Powerlevel10k theme config
+  .zshenv          # Zsh environment
+  .zshrc           # Zsh config (zinit, p10k, fzf-tab) - not stowed
+  .xinitrc         # X11 init
+```
 
-### Using Stow
+## Bootc (Hetzner Server)
 
-1. **Clone this repository**:
+The `bootc/` directory contains everything needed to build and deploy an immutable Arch Linux image to a Hetzner Cloud VPS using [bootc](https://github.com/bootc-dev/bootc).
 
-    ```bash
-    git clone https://github.com/bupd/dotfiles.git
-    cd dotfiles
-    ```
+```bash
+cd ~/dotfiles/bootc
 
-2. **Adopt the files**:
+# Build and push image
+./scripts/build.sh <registry> <username> <password>
 
-    To copy the files into their proper locations:
+# Generate bootable disk image and push via oras
+./scripts/generate-disk.sh <registry> <username> <password>
 
-    ```bash
-    stow --adopt .
-    ```
+# Flash from Hetzner rescue mode
+./scripts/flash-disk.sh <registry> <username> <password>
 
-    Alternatively,
-    ```bash
-    stow . --adopt
-    ```
+# Verify before rebooting
+./scripts/verify-disk.sh
 
-### Included Files
+# Update the running server
+sudo bootc upgrade && sudo reboot
+```
 
-This repository contains the following configuration files and scripts:
+See [bupd/arch-bootc-hetzner](https://github.com/bupd/arch-bootc-hetzner) for full documentation.
 
-- `.config` - Configuration directory
-- `i3` - i3 window manager configuration
-- `i3status` - i3status configuration
-- `nvim` - Neovim configuration
-- `pactl.sh` - Script for managing PulseAudio
-- `pactlVmic.sh` - Script for managing PulseAudio virtual microphone
-- `picom.conf` - Picom (compositor) configuration
-- `powerkill.sh` - Script to handle power-related actions
-- `scripts` - Directory containing various utility scripts
-- `sessionizer` - Script for TMUX session management
-- `.xinitrc` - X11 initialization script
-- `.zshrc` - Zsh shell configuration
+## What's Included
 
-### **📸 My Keyboard Layout - Corne V3**
+| Tool | Config |
+|---|---|
+| Neovim | NvChad + custom plugins (LSP, DAP, telescope, treesitter) |
+| Tmux | tpm, vim-navigator, resurrect, sessionizer |
+| Zsh | zinit, powerlevel10k, fzf-tab, syntax-highlighting |
+| i3 | Window manager with custom keybindings |
+| Kitty | Terminal emulator |
+| Lazygit | Git TUI |
 
-Screenshots of the current layout are included in this repo:
-### layer 0
+## Keyboard - Corne V3
+
+### Layer 0
 <img width="1478" height="458" alt="Screenshot_2025-11-20_14-44-47" src="https://github.com/user-attachments/assets/e6282088-d567-4b6c-bc2d-bbb513ff88c4" />
 
-### layer 1
+### Layer 1
 <img width="1420" height="449" alt="Screenshot_2025-11-20_14-47-42" src="https://github.com/user-attachments/assets/19887259-4d6e-4634-b35c-9df44a9a1a66" />
 
-### layer 2
+### Layer 2
 <img width="1417" height="461" alt="Screenshot_2025-11-20_14-47-55" src="https://github.com/user-attachments/assets/1e28ff5f-0bee-4aa3-9a86-335388798f19" />
-
-### layer 3 - i dont use this..
-<img width="1477" height="455" alt="Screenshot_2025-11-20_14-48-13" src="https://github.com/user-attachments/assets/4541f1b6-32c3-46b5-b58c-418268058c37" />
-
-
 
 ## License
 
-This repository is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
-## Contact
-
-For any questions or issues, feel free to reach out by opening an issue on GitHub.
-
----
-### Note:
-The `check_dependencies.sh` script checks for the presence of required programs and reports any that are missing. If you need additional functionality or more sophisticated handling of package installation, you might need to extend the script or use a more complex package management solution.
+MIT. See [LICENSE](LICENSE) for details.
