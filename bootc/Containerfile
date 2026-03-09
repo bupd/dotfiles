@@ -30,7 +30,7 @@ RUN --mount=type=tmpfs,dst=/tmp --mount=type=cache,dst=/usr/lib/sysimage/cache/p
     traceroute \
     tailscale \
     qemu-guest-agent \
-    nftables \
+    ufw \
     grub \
     less \
     lazygit \
@@ -85,41 +85,13 @@ RestartSec=5s
 WantedBy=multi-user.target
 K3SUNIT
 
-# nftables firewall - lockdown for public cloud
-COPY --chmod=0644 <<'NFTCONF' /etc/nftables.conf
-table inet filter {
-    chain input {
-        type filter hook input priority 0; policy drop;
-
-        # loopback
-        iif "lo" accept
-
-        # established/related
-        ct state established,related accept
-
-        # icmp/icmpv6
-        ip protocol icmp accept
-        ip6 nexthdr icmpv6 accept
-
-        # tailscale interface - allow all
-        iifname "tailscale0" accept
-
-        # ssh
-        tcp dport 22 accept
-
-        # tailscale udp
-        udp dport 41641 accept
-    }
-
-    chain forward {
-        type filter hook forward priority 0; policy accept;
-    }
-
-    chain output {
-        type filter hook output priority 0; policy accept;
-    }
-}
-NFTCONF
+# ufw firewall - lockdown for public cloud
+RUN ufw default deny incoming && \
+    ufw default allow outgoing && \
+    ufw allow ssh && \
+    ufw allow in on tailscale0 && \
+    ufw allow 41641/udp && \
+    ufw enable
 
 # ESP sync script - fixes bootc not updating EFI partition on Arch
 COPY --chmod=0755 <<'ESPFIX' /usr/local/bin/bootc-sync-esp.sh
@@ -200,7 +172,7 @@ WantedBy=sysinit.target
 UNIT
 
 # Enable services
-RUN systemctl enable sshd systemd-networkd systemd-resolved systemd-timesyncd tailscaled qemu-guest-agent serial-getty@ttyS0 bootc-sync-esp nftables k3s
+RUN systemctl enable sshd systemd-networkd systemd-resolved systemd-timesyncd tailscaled qemu-guest-agent serial-getty@ttyS0 bootc-sync-esp ufw k3s
 
 # Timezone and locale
 RUN ln -sf /usr/share/zoneinfo/UTC /etc/localtime && \
