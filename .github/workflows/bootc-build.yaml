@@ -5,7 +5,7 @@ on:
 
 env:
   REGISTRY: ${{ vars.REGISTRY }}
-  PROJECT_NAME: ${{ vars.PROJECT_NAME }}
+  REGISTRY_PROJECT: ${{ vars.REGISTRY_PROJECT }}
   REGISTRY_USERNAME: ${{ vars.REGISTRY_USERNAME }}
 
 jobs:
@@ -20,11 +20,11 @@ jobs:
 
       - name: Login to registry
         env:
-          REGISTRY_SECRET: ${{ secrets.REGISTRY_SECRET }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
         run: |
           podman login "$REGISTRY" \
             -u "$REGISTRY_USERNAME" \
-            -p "$REGISTRY_SECRET"
+            -p "$REGISTRY_PASSWORD"
 
       - name: Build base image
         run: |
@@ -40,11 +40,11 @@ jobs:
         run: |
           podman build --network=host \
             -f bootc/Containerfile \
-            -t "$REGISTRY/$PROJECT_NAME:latest" \
+            -t "$REGISTRY/$REGISTRY_PROJECT:latest" \
             bootc/
 
       - name: Push image
-        run: podman push "$REGISTRY/$PROJECT_NAME:latest"
+        run: podman push "$REGISTRY/$REGISTRY_PROJECT:latest"
 
   disk:
     runs-on: ubuntu-latest
@@ -63,17 +63,17 @@ jobs:
 
       - name: Login to registry
         env:
-          REGISTRY_SECRET: ${{ secrets.REGISTRY_SECRET }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
         run: |
           podman login "$REGISTRY" \
             -u "$REGISTRY_USERNAME" \
-            -p "$REGISTRY_SECRET"
+            -p "$REGISTRY_PASSWORD"
           oras login "$REGISTRY" \
             -u "$REGISTRY_USERNAME" \
-            -p "$REGISTRY_SECRET"
+            -p "$REGISTRY_PASSWORD"
 
       - name: Pull container image
-        run: podman pull "$REGISTRY/$PROJECT_NAME:latest"
+        run: podman pull "$REGISTRY/$REGISTRY_PROJECT:latest"
 
       - name: Generate bootable disk image
         run: |
@@ -84,7 +84,7 @@ jobs:
             -v /etc/containers:/etc/containers \
             -v /dev:/dev \
             -v "$(pwd):/data" \
-            "$REGISTRY/$PROJECT_NAME:latest" \
+            "$REGISTRY/$REGISTRY_PROJECT:latest" \
             bootc install to-disk \
             --composefs-backend \
             --via-loopback /data/bootable.img \
@@ -95,5 +95,5 @@ jobs:
       - name: Compress and push disk image
         run: |
           zstd bootable.img -o bootable.img.zst
-          oras push "$REGISTRY/$PROJECT_NAME:disk-latest" \
+          oras push "$REGISTRY/$REGISTRY_PROJECT:disk-latest" \
             bootable.img.zst:application/octet-stream
