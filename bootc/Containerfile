@@ -30,6 +30,7 @@ RUN --mount=type=tmpfs,dst=/tmp --mount=type=cache,dst=/usr/lib/sysimage/cache/p
     traceroute \
     tailscale \
     qemu-guest-agent \
+    nftables \
     grub \
     less \
     lazygit \
@@ -47,6 +48,78 @@ RUN --mount=type=tmpfs,dst=/tmp --mount=type=cache,dst=/usr/lib/sysimage/cache/p
     lsof \
     man-db \
     && pacman -S --clean --noconfirm
+
+# k3s binary
+RUN K3S_VERSION=$(curl -sfL https://update.k3s.io/v1-release/channels/stable | jq -r '.data[0].latest') && \
+    curl -sfL -o /usr/local/bin/k3s "https://github.com/k3s-io/k3s/releases/download/${K3S_VERSION}/k3s" && \
+    chmod +x /usr/local/bin/k3s && \
+    ln -sf /usr/local/bin/k3s /usr/local/bin/kubectl && \
+    ln -sf /usr/local/bin/k3s /usr/local/bin/crictl && \
+    ln -sf /usr/local/bin/k3s /usr/local/bin/ctr
+
+# k3s systemd service
+COPY --chmod=0644 <<'K3SUNIT' /usr/lib/systemd/system/k3s.service
+[Unit]
+Description=Lightweight Kubernetes
+Documentation=https://k3s.io
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=notify
+EnvironmentFile=-/etc/default/k3s
+ExecStartPre=/bin/sh -xc '! /usr/bin/systemctl is-enabled --quiet nm-cloud-setup.service 2>/dev/null'
+ExecStart=/usr/local/bin/k3s server
+KillMode=process
+Delegate=yes
+OOMScoreAdjust=-999
+LimitNOFILE=1048576
+LimitNPROC=infinity
+LimitCORE=infinity
+TasksMax=infinity
+TimeoutStartSec=0
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
+K3SUNIT
+
+# nftables firewall - lockdown for public cloud
+COPY --chmod=0644 <<'NFTCONF' /etc/nftables.conf
+table inet filter {
+    chain input {
+        type filter hook input priority 0; policy drop;
+
+        # loopback
+        iif "lo" accept
+
+        # established/related
+        ct state established,related accept
+
+        # icmp/icmpv6
+        ip protocol icmp accept
+        ip6 nexthdr icmpv6 accept
+
+        # tailscale interface - allow all
+        iifname "tailscale0" accept
+
+        # ssh
+        tcp dport 22 accept
+
+        # tailscale udp
+        udp dport 41641 accept
+    }
+
+    chain forward {
+        type filter hook forward priority 0; policy accept;
+    }
+
+    chain output {
+        type filter hook output priority 0; policy accept;
+    }
+}
+NFTCONF
 
 # ESP sync script - fixes bootc not updating EFI partition on Arch
 COPY --chmod=0755 <<'ESPFIX' /usr/local/bin/bootc-sync-esp.sh
@@ -127,7 +200,7 @@ WantedBy=sysinit.target
 UNIT
 
 # Enable services
-RUN systemctl enable sshd systemd-networkd systemd-resolved systemd-timesyncd tailscaled qemu-guest-agent serial-getty@ttyS0 bootc-sync-esp
+RUN systemctl enable sshd systemd-networkd systemd-resolved systemd-timesyncd tailscaled qemu-guest-agent serial-getty@ttyS0 bootc-sync-esp nftables k3s
 
 # Timezone and locale
 RUN ln -sf /usr/share/zoneinfo/UTC /etc/localtime && \
