@@ -47,6 +47,7 @@ RUN --mount=type=tmpfs,dst=/tmp --mount=type=cache,dst=/usr/lib/sysimage/cache/p
     tree \
     lsof \
     man-db \
+    qemu-full \
     && pacman -S --clean --noconfirm
 
 # k3s binary
@@ -209,7 +210,7 @@ RUN BUN_INSTALL=/usr/local/share/bun curl -fsSL https://bun.sh/install | bash &&
 # Homebrew
 RUN --mount=type=tmpfs,dst=/tmp \
     NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" && \
-    /home/linuxbrew/.linuxbrew/bin/brew install claude-code && \
+    /home/linuxbrew/.linuxbrew/bin/brew install claude-code lima && \
     chown -R bupd:bupd /home/linuxbrew 2>/dev/null || true
 
 # Git config
