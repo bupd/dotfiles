@@ -51,7 +51,7 @@ RUN --mount=type=tmpfs,dst=/tmp --mount=type=cache,dst=/usr/lib/sysimage/cache/p
     && pacman -S --clean --noconfirm
 
 # k3s binary
-RUN K3S_VERSION=$(curl -sfL https://update.k3s.io/v1-release/channels/stable | jq -r '.data[0].latest') && \
+RUN K3S_VERSION=$(curl -sfL https://update.k3s.io/v1-release/channels | jq -r '.data[] | select(.id=="stable") | .latest') && \
     curl -sfL -o /usr/local/bin/k3s "https://github.com/k3s-io/k3s/releases/download/${K3S_VERSION}/k3s" && \
     chmod +x /usr/local/bin/k3s && \
     ln -sf /usr/local/bin/k3s /usr/local/bin/kubectl && \
