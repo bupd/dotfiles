@@ -1,0 +1,26 @@
+{
+  "version": 3,
+  "skills": {
+    "remotion-best-practices": {
+      "source": "remotion-dev/skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/remotion-dev/skills.git",
+      "skillPath": "skills/remotion/SKILL.md",
+      "skillFolderHash": "9571b6f1d9b42233e4ce48ad121933574d67023c",
+      "installedAt": "2026-01-27T10:36:58.888Z",
+      "updatedAt": "2026-01-27T10:36:58.888Z"
+    },
+    "find-skills": {
+      "source": "vercel-labs/skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/vercel-labs/skills.git",
+      "skillPath": "skills/find-skills/SKILL.md",
+      "skillFolderHash": "c2f31172b6f256272305a5e6e7228b258446899f",
+      "installedAt": "2026-01-27T10:37:10.199Z",
+      "updatedAt": "2026-01-27T10:37:10.199Z"
+    }
+  },
+  "dismissed": {
+    "findSkillsPrompt": true
+  }
+}

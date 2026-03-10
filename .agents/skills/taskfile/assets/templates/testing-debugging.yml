@@ -1,0 +1,383 @@
+# Testing and Debugging Patterns
+version: '3'
+
+# =============================================================================
+# STATUS CHECKS - Smart task execution
+# =============================================================================
+
+tasks:
+  # File-based status check
+  install-deps:
+    status:
+      - test -f node_modules/.installed
+      - npm list --depth=0 | grep -q "express"
+    cmds:
+      - npm install
+      - touch node_modules/.installed
+
+  # Complex status check - production build
+  build:prod:
+    sources:
+      - composer.json
+      - composer.lock
+    generates:
+      - vendor/autoload.php
+    status:
+      # Also check if last build was production
+      - grep -q '"dev": false' vendor/composer/installed.json
+    cmds:
+      - composer install --no-dev
+
+  # Use checksum in status
+  deploy:
+    sources:
+      - '**/*.js'
+    status:
+      - test -f .deployed
+      - test "{{.CHECKSUM}}" = "$(cat .deployed)"
+    cmds:
+      - ./deploy.sh
+      - echo "{{.CHECKSUM}}" > .deployed
+
+
+# =============================================================================
+# PRECONDITIONS - Fail fast
+# =============================================================================
+
+  deploy-with-checks:
+    preconditions:
+      # Simple check
+      - test -f .env
+      
+      # Check with custom error message
+      - sh: test -n "$API_KEY"
+        msg: 'API_KEY environment variable is required'
+      
+      - sh: test -f ./dist/app
+        msg: 'Application not built. Run "task build" first.'
+      
+      - sh: git diff-index --quiet HEAD
+        msg: 'Working directory has uncommitted changes'
+      
+      - sh: command -v docker
+        msg: 'Docker is not installed'
+    cmds:
+      - ./deploy.sh
+
+
+# =============================================================================
+# METHOD SELECTION - Performance optimization
+# =============================================================================
+
+# Global method
+method: timestamp  # Faster than checksum
+
+tasks:
+  # Task-level override for critical builds
+  production-build:
+    method: checksum  # More reliable
+    sources:
+      - 'src/**/*.go'
+    generates:
+      - 'bin/app'
+    cmds:
+      - go build -o bin/app
+
+  # Development build (faster)
+  dev-build:
+    method: timestamp
+    sources:
+      - 'src/**/*.go'
+    generates:
+      - 'bin/app-dev'
+    cmds:
+      - go build -o bin/app-dev
+
+
+# =============================================================================
+# SILENT AND VERBOSE - Output control
+# =============================================================================
+
+# Global silent mode
+silent: true
+
+tasks:
+  # Task-level override
+  verbose-task:
+    silent: false
+    cmds:
+      - echo "This will be shown"
+
+  # Command-level control
+  mixed-output:
+    cmds:
+      - cmd: echo "Silent command"
+        silent: true
+      - cmd: echo "Verbose command"
+        silent: false
+
+
+# =============================================================================
+# DRY RUN - Testing without execution
+# =============================================================================
+
+# Run with: task --dry deploy
+tasks:
+  deploy:
+    cmds:
+      - echo "Building..."
+      - docker build -t myapp .
+      - echo "Pushing..."
+      - docker push myapp
+      - echo "Deploying..."
+      - kubectl apply -f deploy.yml
+
+
+# =============================================================================
+# LABELS - Better debugging output
+# =============================================================================
+
+tasks:
+  # Dynamic labels
+  process-file:
+    label: 'process-{{.FILE}}'
+    cmds:
+      - cat {{.FILE}}
+
+  # Call with different files
+  process-all:
+    cmds:
+      - task: process-file
+        vars: {FILE: 'file1.txt'}
+      - task: process-file
+        vars: {FILE: 'file2.txt'}
+
+
+# =============================================================================
+# IGNORE ERRORS - Continue on failure
+# =============================================================================
+
+tasks:
+  # Task-level ignore
+  tolerant-task:
+    ignore_error: true
+    cmds:
+      - risky-command-1
+      - risky-command-2
+
+  # Command-level ignore
+  mixed-task:
+    cmds:
+      - critical-command  # Will stop on error
+      - cmd: optional-command
+        ignore_error: true
+      - another-critical-command
+
+
+# =============================================================================
+# TEST PATTERNS - Common testing workflows
+# =============================================================================
+
+  # Unit tests with coverage
+  test:unit:
+    desc: Run unit tests with coverage
+    sources:
+      - '**/*.go'
+      - '**/*_test.go'
+    cmds:
+      - go test -race -coverprofile=coverage.out ./...
+      - go tool cover -func=coverage.out
+      - defer: |
+          {{if .EXIT_CODE}}
+            echo "Tests failed!"
+            cat coverage.out
+          {{end}}
+
+  # Integration tests with setup/teardown
+  test:integration:
+    desc: Run integration tests
+    cmds:
+      - echo "Starting test database..."
+      - docker-compose up -d postgres
+      - defer: docker-compose down
+      - sleep 2
+      - go test -tags=integration ./...
+
+  # End-to-end tests
+  test:e2e:
+    desc: Run E2E tests
+    preconditions:
+      - sh: command -v playwright
+        msg: "Playwright not installed"
+    cmds:
+      - task: dev:start
+      - defer: task: dev:stop
+      - sleep 5
+      - playwright test
+
+  # Parallel test execution
+  test:all:
+    desc: Run all tests in parallel
+    deps:
+      - task: test:unit
+      - task: test:integration
+      - task: test:e2e
+
+
+# =============================================================================
+# DEBUGGING - Troubleshooting helpers
+# =============================================================================
+
+  debug:vars:
+    desc: Show all variables
+    silent: false
+    cmds:
+      - echo "OS={{OS}}"
+      - echo "ARCH={{ARCH}}"
+      - echo "TASK={{.TASK}}"
+      - echo "USER_WORKING_DIR={{.USER_WORKING_DIR}}"
+      - echo "TASKFILE_DIR={{.TASKFILE_DIR}}"
+
+  debug:env:
+    desc: Show environment
+    cmds:
+      - env | sort
+
+  debug:sources:
+    desc: Show what files trigger rebuild
+    sources:
+      - 'src/**/*.go'
+    cmds:
+      - for: sources
+        cmd: echo "Source: {{.ITEM}}"
+
+  debug:checksum:
+    desc: Show current checksum
+    sources:
+      - 'src/**/*.go'
+    cmds:
+      - echo "Checksum: {{.CHECKSUM}}"
+
+  debug:timestamp:
+    desc: Show timestamp info
+    method: timestamp
+    sources:
+      - 'src/**/*.go'
+    cmds:
+      - echo "Timestamp: {{.TIMESTAMP}}"
+      - echo "Unix: {{.TIMESTAMP.Unix}}"
+
+
+# =============================================================================
+# WATCH MODE - Development workflow
+# =============================================================================
+
+  # Watch for changes and rebuild
+  dev:watch:
+    desc: Watch and rebuild on changes
+    watch: true
+    sources:
+      - 'src/**/*.go'
+    cmds:
+      - echo "Rebuilding at {{.TIMESTAMP}}..."
+      - go build -o bin/app
+      - echo "Build complete"
+
+  # Watch with test
+  test:watch:
+    desc: Watch and run tests
+    watch: true
+    sources:
+      - 'src/**/*.go'
+      - 'src/**/*_test.go'
+    cmds:
+      - clear
+      - go test -v ./...
+
+
+# =============================================================================
+# BENCHMARKING - Performance testing
+# =============================================================================
+
+  bench:
+    desc: Run benchmarks
+    cmds:
+      - go test -bench=. -benchmem ./...
+      - go test -bench=. -cpuprofile=cpu.prof ./...
+      - defer: rm -f cpu.prof mem.prof
+
+  bench:compare:
+    desc: Compare benchmarks
+    vars:
+      OLD_COMMIT: '{{.OLD_COMMIT | default "HEAD~1"}}'
+    cmds:
+      - git checkout {{.OLD_COMMIT}}
+      - go test -bench=. ./... > old.txt
+      - git checkout -
+      - go test -bench=. ./... > new.txt
+      - benchcmp old.txt new.txt
+      - defer: rm -f old.txt new.txt
+
+
+# =============================================================================
+# VALIDATION - Pre-commit checks
+# =============================================================================
+
+  validate:
+    desc: Run all validation checks
+    deps:
+      - validate:format
+      - validate:lint
+      - validate:security
+      - validate:tests
+
+  validate:format:
+    desc: Check code formatting
+    cmds:
+      - test -z "$(gofmt -l .)"
+
+  validate:lint:
+    desc: Run linters
+    cmds:
+      - golangci-lint run ./...
+
+  validate:security:
+    desc: Security checks
+    cmds:
+      - gosec ./...
+      - go list -json -m all | nancy sleuth
+
+  validate:tests:
+    desc: Ensure tests pass
+    cmds:
+      - go test ./...
+
+
+# =============================================================================
+# FORCE FLAG USAGE
+# =============================================================================
+
+# Use: task --force build
+tasks:
+  build:
+    desc: Build (use --force to rebuild even if up-to-date)
+    sources:
+      - 'src/**/*.go'
+    generates:
+      - 'bin/app'
+    cmds:
+      - go build -o bin/app
+
+
+# =============================================================================
+# STATUS CHECK - CI integration
+# =============================================================================
+
+# Use: task --status build
+# Exit code 1 if out of date, 0 if up to date
+tasks:
+  ci:check:
+    desc: Check if build is needed
+    cmds:
+      - task --status build
+      - echo "Build is up to date"

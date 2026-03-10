@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dagger.io</title>
+  <link rel="stylesheet" href="styles/main.css">
+  <style>
+    /* Inline font-face declarations - using system fonts as fallback for General Sans */
+    @font-face {
+      font-family: "General Sans";
+      src: local("General Sans Regular"), local("GeneralSans-Regular");
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: "General Sans";
+      src: local("General Sans Medium"), local("GeneralSans-Medium");
+      font-weight: 500;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: "General Sans";
+      src: local("General Sans Semibold"), local("GeneralSans-Semibold");
+      font-weight: 600;
+      font-style: normal;
+      font-display: swap;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="navbar__inner">
+      <a href="./" class="navbar__logo" aria-label="Dagger logo">
+        <svg width="107" height="26" viewBox="0 0 107 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M14.3 0H10.1V7.5C9.1 6.8 7.8 6.4 6.4 6.4C2.9 6.4 0 9.5 0 13.4C0 17.3 2.9 20.4 6.4 20.4C7.8 20.4 9.1 20 10.1 19.3V20H14.3V0ZM7.2 16.4C5.5 16.4 4.1 15.1 4.1 13.4C4.1 11.7 5.5 10.4 7.2 10.4C8.9 10.4 10.3 11.7 10.3 13.4C10.3 15.1 8.9 16.4 7.2 16.4Z" fill="currentColor"/>
+          <path d="M25.9 6.4C22.3 6.4 19.3 9.5 19.3 13.4C19.3 17.3 22.3 20.4 25.9 20.4C27.3 20.4 28.6 20 29.6 19.3V20H33.8V6.8H29.6V7.5C28.6 6.8 27.3 6.4 25.9 6.4ZM26.6 16.4C24.9 16.4 23.5 15.1 23.5 13.4C23.5 11.7 24.9 10.4 26.6 10.4C28.3 10.4 29.7 11.7 29.7 13.4C29.7 15.1 28.3 16.4 26.6 16.4Z" fill="currentColor"/>
+          <path d="M48.8 6.8H44.6V7.5C43.6 6.8 42.3 6.4 40.9 6.4C37.4 6.4 34.5 9.5 34.5 13.4C34.5 17.3 37.4 20.4 40.9 20.4C42.3 20.4 43.6 20 44.6 19.3V19.7C44.6 21.4 43.2 22.6 41.5 22.6C40.1 22.6 38.9 22 38.2 21L34.8 23.1C36.2 25 38.6 26.2 41.5 26.2C45.7 26.2 48.8 23.4 48.8 19.7V6.8ZM41.7 16.4C40 16.4 38.6 15.1 38.6 13.4C38.6 11.7 40 10.4 41.7 10.4C43.4 10.4 44.8 11.7 44.8 13.4C44.8 15.1 43.4 16.4 41.7 16.4Z" fill="currentColor"/>
+          <path d="M63.8 6.8H59.6V7.5C58.6 6.8 57.3 6.4 55.9 6.4C52.4 6.4 49.5 9.5 49.5 13.4C49.5 17.3 52.4 20.4 55.9 20.4C57.3 20.4 58.6 20 59.6 19.3V19.7C59.6 21.4 58.2 22.6 56.5 22.6C55.1 22.6 53.9 22 53.2 21L49.8 23.1C51.2 25 53.6 26.2 56.5 26.2C60.7 26.2 63.8 23.4 63.8 19.7V6.8ZM56.7 16.4C55 16.4 53.6 15.1 53.6 13.4C53.6 11.7 55 10.4 56.7 10.4C58.4 10.4 59.8 11.7 59.8 13.4C59.8 15.1 58.4 16.4 56.7 16.4Z" fill="currentColor"/>
+          <path d="M75.4 6.4C71.4 6.4 68.1 9.5 68.1 13.4C68.1 17.5 71.3 20.4 75.5 20.4C77.8 20.4 79.8 19.5 81.1 18L78.4 15.7C77.8 16.4 76.8 16.8 75.7 16.8C74.2 16.8 73 16.1 72.5 14.9H82C82.1 14.4 82.1 13.9 82.1 13.4C82.1 9.5 79.4 6.4 75.4 6.4ZM72.4 12C72.8 10.7 74 9.9 75.4 9.9C76.8 9.9 78 10.7 78.4 12H72.4Z" fill="currentColor"/>
+          <path d="M90.5 6.4C89.2 6.4 88 6.9 87.2 7.7V6.8H83V20H87.2V13.1C87.2 11.5 88.3 10.4 89.8 10.4C90.2 10.4 90.5 10.4 90.8 10.5L91.5 6.5C91.2 6.4 90.8 6.4 90.5 6.4Z" fill="currentColor"/>
+          <path d="M94.2 14.5H104.8" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>
+          <path d="M99.5 9.2V19.8" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>
+        </svg>
+      </a>
+
+      <div class="navbar__links">
+        <a href="#" class="navbar__link">Cloud</a>
+        <a href="#" class="navbar__link">Docs</a>
+        <a href="#" class="navbar__link">Blog</a>
+        <a href="#" class="navbar__link">Community</a>
+      </div>
+
+      <div class="navbar__actions">
+        <a href="#" class="navbar__github">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          Star
+          <span class="navbar__github-count">15,416</span>
+        </a>
+        <a href="#" class="navbar__discord" aria-label="Discord">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286z"/></svg>
+        </a>
+        <a href="#" class="navbar__cta">Quickstart</a>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="hero__inner">
+        <div class="hero__content">
+          <h1 class="hero__title">A better way to ship</h1>
+          <div class="hero__description">
+            <p>Build, test and deploy any codebase, repeatably and at scale.</p>
+            <p>Runs locally, in your CI server, or directly in the cloud.</p>
+          </div>
+          <div class="hero__actions">
+            <a href="#" class="hero__cta">Get Started</a>
+            <p class="hero__brew">brew install dagger/tap/dagger</p>
+          </div>
+        </div>
+        <div class="hero__visual"></div>
+      </div>
+    </section>
+
+    <!-- Logo Ticker -->
+    <section class="logo-ticker">
+      <div class="logo-ticker__item"></div>
+      <div class="logo-ticker__item"></div>
+      <div class="logo-ticker__item"></div>
+      <div class="logo-ticker__item"></div>
+      <div class="logo-ticker__item"></div>
+      <div class="logo-ticker__item"></div>
+      <div class="logo-ticker__item"></div>
+    </section>
+
+    <!-- Features -->
+    <section class="features">
+      <div class="features__list">
+
+        <!-- Programmable -->
+        <article class="feature-card">
+          <div class="feature-card__content">
+            <h2 class="feature-card__title">Programmable</h2>
+            <div class="feature-card__text">
+              <p>Orchestrating end-to-end tests requires a lot of automation. We believe shell scripts and proprietary YAML are no longer an acceptable developer experience for this automation.</p>
+              <p>Dagger provides a complete platform for modern test orchestration: a runtime; system API; SDKs for 8 languages; interactive REPL; and more.</p>
+            </div>
+          </div>
+          <div class="feature-card__visual feature-card__visual--teal"></div>
+        </article>
+
+        <!-- Local-first -->
+        <article class="feature-card">
+          <div class="feature-card__content">
+            <h2 class="feature-card__title">Local-first</h2>
+            <div class="feature-card__text">
+              <p>With Dagger, local execution is not an afterthought but a core feature.</p>
+              <p>Once Dagger is configured to orchestrate your tests, it will reliably do so on any supported system: your laptop, AI sandbox, CI server, or dedicated cloud infrastructure. The only dependency is a recent Linux kernel.</p>
+            </div>
+          </div>
+          <div class="feature-card__visual feature-card__visual--teal"></div>
+        </article>
+
+        <!-- Repeatable -->
+        <article class="feature-card">
+          <div class="feature-card__content">
+            <h2 class="feature-card__title">Repeatable</h2>
+            <div class="feature-card__text">
+              <p>Dagger is designed from the ground up for repeatability: tests run in containers; your orchestration logic runs in sandboxed functions; host dependencies are explicit and strictly typed; intermediate artifacts and environments are built just-in-time; everything is cached by default with fine-grained cache control.</p>
+              <p>Whether it's a test result or an intermediate artifact, Dagger gives you an output you can trust.</p>
+            </div>
+            <a href="#" class="feature-card__link">Read Docs</a>
+          </div>
+          <div class="feature-card__visual feature-card__visual--orange"></div>
+        </article>
+
+        <!-- Observable -->
+        <article class="feature-card">
+          <div class="feature-card__content">
+            <h2 class="feature-card__title">Observable</h2>
+            <div class="feature-card__text">
+              <p>Built-in tracing, logs, and metrics that show exactly what's happening at every step. Debug complex workflows immediately instead of guessing what went wrong from a wall of text logs.</p>
+            </div>
+            <a href="#" class="feature-card__link">Learn More</a>
+          </div>
+          <div class="feature-card__visual feature-card__visual--yellow"></div>
+        </article>
+
+      </div>
+    </section>
+
+    <!-- Community Section -->
+    <section class="community">
+      <div class="community__inner">
+        <div class="community__header">
+          <span class="community__label">Community</span>
+          <h1 class="community__title">Join the community</h1>
+          <p class="community__subtitle">Connect, learn, and share with fellow engineers and builders.</p>
+        </div>
+
+        <div class="community__cards">
+          <a href="#" class="community__card">
+            <div class="community__card-icon">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <h4 class="community__card-title">Community</h4>
+            <p class="community__card-desc">See what's happening and ways you can participate.</p>
+          </a>
+
+          <a href="#" class="community__card">
+            <div class="community__card-icon">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+            </div>
+            <h4 class="community__card-title">GitHub</h4>
+            <p class="community__card-desc">Report bugs, request features and contribute to the project.</p>
+          </a>
+
+          <a href="#" class="community__card">
+            <div class="community__card-icon">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286z"/></svg>
+            </div>
+            <h4 class="community__card-title">Discord</h4>
+            <p class="community__card-desc">Join nearly 5,000 members to ask questions, share tips, or just listen in.</p>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Newsletter -->
+    <section class="newsletter">
+      <h4 class="newsletter__title">Get email updates, be the first to know</h4>
+      <div class="newsletter__form">
+        <div class="newsletter__input-wrap">
+          <input type="email" class="newsletter__input" placeholder="email@dagger.io">
+        </div>
+        <button type="submit" class="newsletter__submit">Submit</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer__inner">
+      <div class="footer__top">
+        <a href="./" class="footer__logo" aria-label="Dagger">
+          <svg width="169" height="56" viewBox="0 0 107 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M14.3 0H10.1V7.5C9.1 6.8 7.8 6.4 6.4 6.4C2.9 6.4 0 9.5 0 13.4C0 17.3 2.9 20.4 6.4 20.4C7.8 20.4 9.1 20 10.1 19.3V20H14.3V0ZM7.2 16.4C5.5 16.4 4.1 15.1 4.1 13.4C4.1 11.7 5.5 10.4 7.2 10.4C8.9 10.4 10.3 11.7 10.3 13.4C10.3 15.1 8.9 16.4 7.2 16.4Z" fill="currentColor"/>
+            <path d="M25.9 6.4C22.3 6.4 19.3 9.5 19.3 13.4C19.3 17.3 22.3 20.4 25.9 20.4C27.3 20.4 28.6 20 29.6 19.3V20H33.8V6.8H29.6V7.5C28.6 6.8 27.3 6.4 25.9 6.4ZM26.6 16.4C24.9 16.4 23.5 15.1 23.5 13.4C23.5 11.7 24.9 10.4 26.6 10.4C28.3 10.4 29.7 11.7 29.7 13.4C29.7 15.1 28.3 16.4 26.6 16.4Z" fill="currentColor"/>
+            <path d="M48.8 6.8H44.6V7.5C43.6 6.8 42.3 6.4 40.9 6.4C37.4 6.4 34.5 9.5 34.5 13.4C34.5 17.3 37.4 20.4 40.9 20.4C42.3 20.4 43.6 20 44.6 19.3V19.7C44.6 21.4 43.2 22.6 41.5 22.6C40.1 22.6 38.9 22 38.2 21L34.8 23.1C36.2 25 38.6 26.2 41.5 26.2C45.7 26.2 48.8 23.4 48.8 19.7V6.8ZM41.7 16.4C40 16.4 38.6 15.1 38.6 13.4C38.6 11.7 40 10.4 41.7 10.4C43.4 10.4 44.8 11.7 44.8 13.4C44.8 15.1 43.4 16.4 41.7 16.4Z" fill="currentColor"/>
+            <path d="M63.8 6.8H59.6V7.5C58.6 6.8 57.3 6.4 55.9 6.4C52.4 6.4 49.5 9.5 49.5 13.4C49.5 17.3 52.4 20.4 55.9 20.4C57.3 20.4 58.6 20 59.6 19.3V19.7C59.6 21.4 58.2 22.6 56.5 22.6C55.1 22.6 53.9 22 53.2 21L49.8 23.1C51.2 25 53.6 26.2 56.5 26.2C60.7 26.2 63.8 23.4 63.8 19.7V6.8ZM56.7 16.4C55 16.4 53.6 15.1 53.6 13.4C53.6 11.7 55 10.4 56.7 10.4C58.4 10.4 59.8 11.7 59.8 13.4C59.8 15.1 58.4 16.4 56.7 16.4Z" fill="currentColor"/>
+            <path d="M75.4 6.4C71.4 6.4 68.1 9.5 68.1 13.4C68.1 17.5 71.3 20.4 75.5 20.4C77.8 20.4 79.8 19.5 81.1 18L78.4 15.7C77.8 16.4 76.8 16.8 75.7 16.8C74.2 16.8 73 16.1 72.5 14.9H82C82.1 14.4 82.1 13.9 82.1 13.4C82.1 9.5 79.4 6.4 75.4 6.4ZM72.4 12C72.8 10.7 74 9.9 75.4 9.9C76.8 9.9 78 10.7 78.4 12H72.4Z" fill="currentColor"/>
+            <path d="M90.5 6.4C89.2 6.4 88 6.9 87.2 7.7V6.8H83V20H87.2V13.1C87.2 11.5 88.3 10.4 89.8 10.4C90.2 10.4 90.5 10.4 90.8 10.5L91.5 6.5C91.2 6.4 90.8 6.4 90.5 6.4Z" fill="currentColor"/>
+            <path d="M94.2 14.5H104.8" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>
+            <path d="M99.5 9.2V19.8" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>
+          </svg>
+        </a>
+
+        <div class="footer__columns">
+          <div class="footer__column">
+            <p class="footer__column-title">Resources</p>
+            <div class="footer__column-links">
+              <a href="#" class="footer__column-link">Docs</a>
+              <a href="#" class="footer__column-link">Blog</a>
+              <a href="#" class="footer__column-link">Videos</a>
+            </div>
+          </div>
+          <div class="footer__column">
+            <p class="footer__column-title">Community</p>
+            <div class="footer__column-links">
+              <a href="#" class="footer__column-link">Events</a>
+              <a href="#" class="footer__column-link">Engineering Deep Dives</a>
+              <a href="#" class="footer__column-link">Get Involved</a>
+              <a href="#" class="footer__column-link">Dagger Love</a>
+              <a href="#" class="footer__column-link">Dagger Commanders</a>
+              <a href="#" class="footer__column-link">Community SDKs</a>
+            </div>
+          </div>
+          <div class="footer__column">
+            <p class="footer__column-title">Product</p>
+            <div class="footer__column-links">
+              <a href="#" class="footer__column-link">Dagger Cloud</a>
+              <a href="#" class="footer__column-link">Daggerverse</a>
+            </div>
+          </div>
+          <div class="footer__column">
+            <p class="footer__column-title">Company</p>
+            <div class="footer__column-links">
+              <a href="#" class="footer__column-link">Partners</a>
+              <a href="#" class="footer__column-link">Careers</a>
+              <a href="#" class="footer__column-link">Brand</a>
+              <a href="#" class="footer__column-link">Trademark Guidelines</a>
+              <a href="#" class="footer__column-link">Trust Center</a>
+              <a href="#" class="footer__column-link">Service Status</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer__divider"></div>
+
+      <div class="footer__bottom">
+        <div class="footer__bottom-left">
+          <span class="footer__copyright">Copyright &copy; Dagger 2025. All rights reserved.</span>
+          <a href="#" class="footer__legal-link">Privacy Policy</a>
+          <a href="#" class="footer__legal-link">Terms of Service</a>
+        </div>
+        <div class="footer__social">
+          <a href="#" class="footer__social-link" aria-label="YouTube">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+          </a>
+          <a href="#" class="footer__social-link" aria-label="Twitter">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+          </a>
+          <a href="#" class="footer__social-link" aria-label="Discord">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286z"/></svg>
+          </a>
+          <a href="#" class="footer__social-link" aria-label="Bluesky">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 10.8c-1.087-2.114-4.046-6.053-6.798-7.995C2.566.944 1.561 1.266.902 1.565.139 1.908 0 3.08 0 3.768c0 .69.378 5.65.624 6.479.785 2.627 3.584 3.493 6.16 3.244-4.263.422-8.003 1.81-3.16 6.395C8.07 24.457 10.282 20.2 12 17.245c1.718 2.956 3.472 6.753 8.376 2.641 4.843-4.585 1.103-5.973-3.16-6.395 2.576.249 5.375-.617 6.16-3.244.246-.828.624-5.79.624-6.479 0-.688-.139-1.86-.902-2.203-.659-.3-1.664-.621-4.3 1.24C16.046 4.748 13.087 8.687 12 10.8z"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
