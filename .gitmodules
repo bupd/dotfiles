@@ -1,0 +1,3 @@
+[submodule "bootc"]
+	path = bootc
+	url = git@github.com:bupd/arch-bootc-hetzner.git
