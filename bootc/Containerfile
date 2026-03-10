@@ -58,32 +58,7 @@ RUN chmod +x /usr/local/bin/k3s && \
     ln -sf /usr/local/bin/k3s /usr/local/bin/ctr
 
 # k3s systemd service
-RUN cat <<'K3SUNIT' > /usr/lib/systemd/system/k3s.service
-[Unit]
-Description=Lightweight Kubernetes
-Documentation=https://k3s.io
-Wants=network-online.target
-After=network-online.target
-
-[Service]
-Type=notify
-EnvironmentFile=-/etc/default/k3s
-ExecStartPre=/bin/sh -xc '! /usr/bin/systemctl is-enabled --quiet nm-cloud-setup.service 2>/dev/null'
-ExecStart=/usr/local/bin/k3s server --tls-san hetzner-bootc.tail6c5ea9.ts.net --tls-san 100.100.156.26
-KillMode=process
-Delegate=yes
-OOMScoreAdjust=-999
-LimitNOFILE=1048576
-LimitNPROC=infinity
-LimitCORE=infinity
-TasksMax=infinity
-TimeoutStartSec=0
-Restart=always
-RestartSec=5s
-
-[Install]
-WantedBy=multi-user.target
-K3SUNIT
+COPY files/k3s.service /usr/lib/systemd/system/k3s.service
 
 # ufw firewall - lockdown for public cloud
 RUN ufw default deny incoming && \
@@ -94,83 +69,11 @@ RUN ufw default deny incoming && \
     ufw enable
 
 # ESP sync script - fixes bootc not updating EFI partition on Arch
-RUN cat <<'ESPFIX' > /usr/local/bin/bootc-sync-esp.sh
-#!/bin/bash
-set -euo pipefail
-
-ESP="/boot/efi"
-BOOT="/boot"
-
-# Ensure ESP is mounted
-if ! mountpoint -q "$ESP"; then
-    EFI_PART=$(blkid -t PARTLABEL="EFI System" -o device 2>/dev/null | head -1)
-    if [ -z "$EFI_PART" ]; then
-        EFI_PART=$(blkid -t TYPE="vfat" -o device 2>/dev/null | head -1)
-    fi
-    if [ -n "$EFI_PART" ]; then
-        mount "$EFI_PART" "$ESP"
-    else
-        echo "bootc-sync-esp: no EFI partition found"
-        exit 1
-    fi
-fi
-
-# Install systemd-boot binary
-mkdir -p "$ESP/EFI/BOOT" "$ESP/EFI/systemd"
-cp /usr/lib/systemd/boot/efi/systemd-bootx64.efi "$ESP/EFI/BOOT/BOOTX64.EFI"
-cp /usr/lib/systemd/boot/efi/systemd-bootx64.efi "$ESP/EFI/systemd/systemd-bootx64.efi"
-
-# Find the active loader directory (bootc rotates between loader.0 and loader.1)
-LOADER_DIR=$(readlink -f "$BOOT/loader" 2>/dev/null)
-if [ ! -d "$LOADER_DIR/entries" ]; then
-    for d in "$BOOT"/loader.0 "$BOOT"/loader.1; do
-        if [ -d "$d/entries" ]; then LOADER_DIR="$d"; break; fi
-    done
-fi
-
-# Sync all loader entries to ESP
-mkdir -p "$ESP/loader/entries"
-rm -f "$ESP/loader/entries/"*.conf
-if [ -d "$LOADER_DIR/entries" ]; then
-    cp "$LOADER_DIR/entries/"*.conf "$ESP/loader/entries/"
-    sed -i 's|/boot/ostree/|/ostree/|g' "$ESP/loader/entries/"*.conf
-
-    # Default to highest version entry
-    DEFAULT_ENTRY=$(ls -1 "$ESP/loader/entries/" | sort -t- -k1 -rV | head -1)
-    printf "default %s\ntimeout 5\n" "$DEFAULT_ENTRY" > "$ESP/loader/loader.conf"
-fi
-
-# Clean old kernels from ESP, then sync current ones
-rm -rf "$ESP/ostree"
-for OSTREE_DIR in "$BOOT"/ostree/default-*; do
-    if [ -d "$OSTREE_DIR" ]; then
-        DEST="$ESP/ostree/$(basename "$OSTREE_DIR")"
-        mkdir -p "$DEST"
-        cp "$OSTREE_DIR"/vmlinuz-* "$DEST/" 2>/dev/null || true
-        cp "$OSTREE_DIR"/initramfs-* "$DEST/" 2>/dev/null || true
-    fi
-done
-
-echo "bootc-sync-esp: ESP synced successfully"
-ESPFIX
+COPY files/bootc-sync-esp.sh /usr/local/bin/bootc-sync-esp.sh
 RUN chmod +x /usr/local/bin/bootc-sync-esp.sh
 
 # Systemd service to sync ESP on every boot
-RUN cat <<'UNIT' > /usr/lib/systemd/system/bootc-sync-esp.service
-[Unit]
-Description=Sync bootc bootloader to EFI System Partition
-DefaultDependencies=no
-After=local-fs.target
-Before=sysinit.target
-
-[Service]
-Type=oneshot
-ExecStart=/usr/local/bin/bootc-sync-esp.sh
-RemainAfterExit=yes
-
-[Install]
-WantedBy=sysinit.target
-UNIT
+COPY files/bootc-sync-esp.service /usr/lib/systemd/system/bootc-sync-esp.service
 
 # Enable services
 RUN systemctl enable sshd systemd-networkd systemd-resolved systemd-timesyncd tailscaled qemu-guest-agent serial-getty@ttyS0 bootc-sync-esp ufw k3s
@@ -225,156 +128,14 @@ RUN git clone https://github.com/bupd/dotfiles.git /var/home/bupd/dotfiles && \
     chown -R bupd:bupd /var/home/bupd
 
 # Server-specific sessionizer (overrides dotfiles version with correct paths)
-RUN cat <<'SESSIONIZER' > /var/home/bupd/sessionizer
-#!/usr/bin/env bash
-
-if [[ $# -eq 1 ]]; then
-    selected=$1
-else
-    selected=$(find ~/code/ ~/ -mindepth 1 -maxdepth 1 -type d | fzf)
-fi
-
-if [[ -z $selected ]]; then
-    exit 0
-fi
-
-selected_name=$(basename "$selected" | tr . _)
-tmux_running=$(pgrep tmux)
-
-if [[ -z $TMUX ]] && [[ -z $tmux_running ]]; then
-    tmux new-session -s $selected_name -c $selected
-    exit 0
-fi
-
-if ! tmux has-session -t=$selected_name 2> /dev/null; then
-    tmux new-session -ds $selected_name -c $selected
-fi
-
-tmux switch-client -t $selected_name
-SESSIONIZER
+COPY files/sessionizer /var/home/bupd/sessionizer
 RUN chmod +x /var/home/bupd/sessionizer && \
     mkdir -p /var/home/bupd/.local/bin && \
     ln -sf /var/home/bupd/sessionizer /var/home/bupd/.local/bin/sessionizer && \
     chown -R bupd:bupd /var/home/bupd/.local
 
 # Zshrc (not managed by stow per .stow-local-ignore)
-RUN cat <<'ZSHRC' > /var/home/bupd/.zshrc
-# Include sbin paths
-export PATH="/usr/local/sbin:/usr/sbin:/sbin:$PATH"
-
-# Enable Powerlevel10k instant prompt.
-if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
-  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
-fi
-
-# Zinit
-ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
-if [ ! -d "$ZINIT_HOME" ]; then
-  mkdir -p "$(dirname $ZINIT_HOME)"
-  git clone https://github.com/zdharma-continuum/zinit.git "$ZINIT_HOME"
-fi
-source "${ZINIT_HOME}/zinit.zsh"
-
-# Powerlevel10k
-zinit ice depth=1; zinit light romkatv/powerlevel10k
-
-# Plugins
-zinit light zsh-users/zsh-syntax-highlighting
-zinit light zsh-users/zsh-completions
-zinit light zsh-users/zsh-autosuggestions
-zinit light Aloxaf/fzf-tab
-
-# Snippets
-zinit snippet OMZP::git
-zinit snippet OMZP::sudo
-zinit snippet OMZP::command-not-found
-
-# p10k
-[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
-
-# Completions
-autoload -Uz compinit && compinit
-zinit cdreplay -q
-
-# Keybindings
-bindkey -e
-bindkey '^p' history-search-backward
-bindkey '^n' history-search-forward
-bindkey '^[w' kill-region
-bindkey '^[[1;5C' forward-word
-bindkey '^[[1;5D' backward-word
-bindkey '^[[3;5~' kill-word
-bindkey '^[[3~' delete-char
-bindkey '\b' backward-delete-char
-bindkey '\C-h' backward-kill-word
-
-# History
-HISTSIZE=100000
-HISTFILE=~/.zsh_history
-SAVEHIST=$HISTSIZE
-HISTDUP=erase
-setopt appendhistory
-setopt sharehistory
-setopt hist_ignore_all_dups
-setopt hist_save_no_dups
-setopt hist_ignore_dups
-setopt hist_find_no_dups
-
-# Completion styling
-zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
-zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
-zstyle ':completion:*' menu no
-zstyle ':fzf-tab:complete:cd:*' fzf-preview 'ls --color $realpath'
-
-# Aliases
-alias ls='ls --color'
-alias vim='nvim'
-alias ..='cd ..'
-alias ...='cd ../..'
-alias l='ls -al'
-alias :q='exit'
-alias ta='tmux a'
-alias t='tmux'
-alias c='clear'
-alias gs='git status'
-alias gfp='git fetch && git pull'
-alias lz='lazygit'
-alias d='podman'
-alias dc='podman compose'
-
-# Editor
-export EDITOR='nvim'
-
-# PATH
-export PATH="$HOME/.local/bin:$PATH"
-
-# Go
-export GOPATH="$HOME/go"
-export GOBIN="$GOPATH/bin"
-export PATH="/usr/lib/go/bin:/usr/local/go/bin:$GOPATH/bin:$PATH"
-
-# Bun
-export BUN_INSTALL="$HOME/.bun"
-export PATH="$BUN_INSTALL/bin:/usr/local/share/bun/bin:$PATH"
-
-# Homebrew
-eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv 2>/dev/null)"
-
-# GPG tty for signing
-export GPG_TTY=$(tty)
-
-# Colored man pages
-export LESS_TERMCAP_mb=$'\e[1;32m'
-export LESS_TERMCAP_md=$'\e[1;32m'
-export LESS_TERMCAP_me=$'\e[0m'
-export LESS_TERMCAP_se=$'\e[0m'
-export LESS_TERMCAP_so=$'\e[01;33m'
-export LESS_TERMCAP_ue=$'\e[0m'
-export LESS_TERMCAP_us=$'\e[1;4;31m'
-
-# fzf
-eval "$(fzf --zsh)"
-ZSHRC
+COPY files/zshrc /var/home/bupd/.zshrc
 RUN chown bupd:bupd /var/home/bupd/.zshrc /var/home/bupd/sessionizer
 
 LABEL containers.bootc 1
