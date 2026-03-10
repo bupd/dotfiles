@@ -61,12 +61,14 @@ RUN chmod +x /usr/local/bin/k3s && \
 COPY files/k3s.service /usr/lib/systemd/system/k3s.service
 
 # ufw firewall - lockdown for public cloud
+# Configure rules at build time; ufw enable requires iptables/kernel so
+# we set ENABLED=yes and let systemd start it at boot
 RUN ufw default deny incoming && \
     ufw default allow outgoing && \
     ufw allow ssh && \
     ufw allow in on tailscale0 && \
     ufw allow 41641/udp && \
-    ufw enable
+    sed -i 's/^ENABLED=no/ENABLED=yes/' /etc/ufw/ufw.conf
 
 # ESP sync script - fixes bootc not updating EFI partition on Arch
 COPY files/bootc-sync-esp.sh /usr/local/bin/bootc-sync-esp.sh
