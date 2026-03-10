@@ -1,0 +1,16 @@
+#!/bin/bash
+# Wrapper for bootc that syncs ESP after mutable operations.
+# Lives at /usr/local/bin/bootc (before /usr/bin/bootc in PATH).
+/usr/bin/bootc "$@"
+rc=$?
+
+case "${1:-}" in
+    upgrade|switch|rollback)
+        if [ $rc -eq 0 ]; then
+            echo "bootc-wrapper: syncing ESP after $1..."
+            /usr/local/bin/bootc-sync-esp.sh
+        fi
+        ;;
+esac
+
+exit $rc

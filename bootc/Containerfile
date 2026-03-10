@@ -73,7 +73,9 @@ RUN ufw default deny incoming && \
 
 # ESP sync script - fixes bootc not updating EFI partition on Arch
 COPY files/bootc-sync-esp.sh /usr/local/bin/bootc-sync-esp.sh
-RUN chmod +x /usr/local/bin/bootc-sync-esp.sh
+# bootc wrapper - syncs ESP after upgrade/switch/rollback
+COPY files/bootc-wrapper /usr/local/bin/bootc
+RUN chmod +x /usr/local/bin/bootc-sync-esp.sh /usr/local/bin/bootc
 
 # Systemd service to sync ESP on every boot
 COPY files/bootc-sync-esp.service /usr/lib/systemd/system/bootc-sync-esp.service
