@@ -101,7 +101,7 @@ jobs:
 
       - name: Generate bootable disk image
         run: |
-          fallocate -l 20G bootable.img
+          fallocate -l 40G bootable.img
           sudo podman run \
             --rm --privileged --pid=host --network=host \
             -v /var/lib/containers:/var/lib/containers \
