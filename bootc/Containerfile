@@ -47,6 +47,7 @@ RUN --mount=type=tmpfs,dst=/tmp --mount=type=cache,dst=/usr/lib/sysimage/cache/p
     tree \
     lsof \
     man-db \
+    base-devel \
     qemu-full \
     && pacman -S --clean --noconfirm
 
@@ -94,6 +95,13 @@ RUN printf '[Match]\nType=ether\n\n[Network]\nDHCP=yes\nIPv6AcceptRA=yes\n\n[DHC
 RUN useradd -m -G wheel -s /bin/zsh bupd && \
     echo "%wheel ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/wheel
 
+# yay (AUR helper)
+RUN --mount=type=tmpfs,dst=/tmp \
+    git clone https://aur.archlinux.org/yay-bin.git /tmp/yay-bin && \
+    chown -R bupd:bupd /tmp/yay-bin && \
+    runuser -u bupd -- bash -c "cd /tmp/yay-bin && makepkg --noconfirm" && \
+    pacman -U --noconfirm /tmp/yay-bin/*.pkg.tar.zst
+
 # SSH config - key-based auth only
 RUN mkdir -p /etc/ssh/sshd_config.d && \
     printf 'PermitRootLogin no\nPasswordAuthentication no\nPubkeyAuthentication yes\nAllowUsers bupd\n' \
@@ -112,10 +120,14 @@ RUN BUN_INSTALL=/usr/local/share/bun curl -fsSL https://bun.sh/install | bash &&
     ln -sf /usr/local/share/bun/bin/bun /usr/local/bin/bun && \
     ln -sf /usr/local/share/bun/bin/bunx /usr/local/bin/bunx
 
+# Claude Code (native binary)
+RUN curl -fsSL https://claude.ai/install.sh | bash && \
+    ln -sf ~/.local/bin/claude /usr/local/bin/claude
+
 # Homebrew
 RUN --mount=type=tmpfs,dst=/tmp \
     NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" && \
-    /home/linuxbrew/.linuxbrew/bin/brew install claude-code lima && \
+    /home/linuxbrew/.linuxbrew/bin/brew install lima && \
     chown -R bupd:bupd /home/linuxbrew 2>/dev/null || true
 
 # Git config
