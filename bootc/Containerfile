@@ -48,15 +48,17 @@ RUN --mount=type=tmpfs,dst=/tmp --mount=type=cache,dst=/usr/lib/sysimage/cache/p
     lsof \
     man-db \
     base-devel \
+    nodejs \
+    npm \
     qemu-full \
     && pacman -S --clean --noconfirm
 
-# k3s binary
-# k3s binary (downloaded externally or via: curl -sfL -o k3s "https://github.com/k3s-io/k3s/releases/download/v1.34.5%2Bk3s1/k3s")
-COPY k3s /usr/local/bin/k3s
-RUN chmod +x /usr/local/bin/k3s && \
-    ln -sf /usr/local/bin/k3s /usr/local/bin/crictl && \
-    ln -sf /usr/local/bin/k3s /usr/local/bin/ctr
+# k3s binary (downloaded during build)
+RUN K3S_VERSION=$(curl -sfL https://update.k3s.io/v1-release/channels | jq -r '.data[] | select(.id=="stable") | .latest') && \
+    curl -sfL -o /usr/bin/k3s "https://github.com/k3s-io/k3s/releases/download/$(echo "$K3S_VERSION" | sed 's/+/%2B/g')/k3s" && \
+    chmod +x /usr/bin/k3s && \
+    ln -sf /usr/bin/k3s /usr/bin/crictl && \
+    ln -sf /usr/bin/k3s /usr/bin/ctr
 
 # k3s systemd service
 COPY files/k3s.service /usr/lib/systemd/system/k3s.service
@@ -71,11 +73,13 @@ RUN ufw default deny incoming && \
     ufw allow 41641/udp && \
     sed -i 's/^ENABLED=no/ENABLED=yes/' /etc/ufw/ufw.conf
 
-# ESP sync script - fixes bootc not updating EFI partition on Arch
-COPY files/bootc-sync-esp.sh /usr/local/bin/bootc-sync-esp.sh
-# bootc wrapper - syncs ESP after upgrade/switch/rollback
-COPY files/bootc-wrapper /usr/local/bin/bootc
-RUN chmod +x /usr/local/bin/bootc-sync-esp.sh /usr/local/bin/bootc
+# ESP sync script and bootc wrapper
+# Installed to /usr/bin/ so they survive bootc upgrades (not /usr/local/ which maps to /var/)
+COPY files/bootc-sync-esp.sh /usr/bin/bootc-sync-esp
+COPY files/bootc-wrapper /usr/bin/bootc-wrapper
+RUN chmod +x /usr/bin/bootc-sync-esp /usr/bin/bootc-wrapper && \
+    mv /usr/bin/bootc /usr/bin/bootc.real && \
+    ln -sf /usr/bin/bootc-wrapper /usr/bin/bootc
 
 # Systemd service to sync ESP on every boot
 COPY files/bootc-sync-esp.service /usr/lib/systemd/system/bootc-sync-esp.service
@@ -117,20 +121,18 @@ RUN mkdir -p /var/home/bupd/.ssh && chmod 700 /var/home/bupd/.ssh && \
     chown -R bupd:bupd /var/home/bupd/.ssh && \
     mkdir -p /var/home/bupd/code && chown bupd:bupd /var/home/bupd/code
 
-# Bun
-RUN BUN_INSTALL=/usr/local/share/bun curl -fsSL https://bun.sh/install | bash && \
-    ln -sf /usr/local/share/bun/bin/bun /usr/local/bin/bun && \
-    ln -sf /usr/local/share/bun/bin/bunx /usr/local/bin/bunx
+# Bun (install to /usr/ so it survives bootc upgrades)
+RUN BUN_INSTALL=/usr curl -fsSL https://bun.sh/install | bash
 
 # Claude Code (native binary)
 RUN curl -fsSL https://claude.ai/install.sh | bash && \
-    ln -sf ~/.local/bin/claude /usr/local/bin/claude
+    cp ~/.local/bin/claude /usr/bin/claude
 
-# Homebrew
+# Lima (direct download, no homebrew needed)
 RUN --mount=type=tmpfs,dst=/tmp \
-    NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" && \
-    /home/linuxbrew/.linuxbrew/bin/brew install lima && \
-    chown -R bupd:bupd /home/linuxbrew 2>/dev/null || true
+    LIMA_VERSION=$(curl -sfL https://api.github.com/repos/lima-vm/lima/releases/latest | jq -r .tag_name) && \
+    curl -sfL -o /tmp/lima.tar.gz "https://github.com/lima-vm/lima/releases/download/${LIMA_VERSION}/lima-${LIMA_VERSION#v}-Linux-x86_64.tar.gz" && \
+    tar -xzf /tmp/lima.tar.gz -C /usr/
 
 # Git config
 RUN printf '[user]\n\tname = bupd\n\temail = bupdprasanth@gmail.com\n\tsigningkey = EFD822952819E418\n[core]\n\teditor = nvim\n[pull]\n\trebase = true\n[merge]\n\ttool = nvimdiff\n[diff]\n\ttool = nvimdiff\n\tcolorMoved = default\n[rerere]\n\tenabled = true\n\tautoUpdate = true\n[commit]\n\tgpgsign = true\n[tag]\n\tgpgsign = true\n[gpg]\n\tprogram = gpg\n' \

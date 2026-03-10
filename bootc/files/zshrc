@@ -94,10 +94,7 @@ export PATH="/usr/lib/go/bin:/usr/local/go/bin:$GOPATH/bin:$PATH"
 
 # Bun
 export BUN_INSTALL="$HOME/.bun"
-export PATH="$BUN_INSTALL/bin:/usr/local/share/bun/bin:$PATH"
-
-# Homebrew
-eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv 2>/dev/null)"
+export PATH="$BUN_INSTALL/bin:$PATH"
 
 # GPG tty for signing
 export GPG_TTY=$(tty)

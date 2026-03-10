@@ -46,12 +46,6 @@ jobs:
       - name: Tag base image
         run: podman tag arch-bootc:latest ghcr.io/bootcrew/arch-bootc:latest
 
-      - name: Download k3s binary
-        run: |
-          K3S_VERSION=$(curl -sfL https://update.k3s.io/v1-release/channels | jq -r '.data[] | select(.id=="stable") | .latest')
-          curl -sfL -o bootc/k3s "https://github.com/k3s-io/k3s/releases/download/$(echo $K3S_VERSION | sed 's/+/%2B/g')/k3s"
-          chmod +x bootc/k3s
-
       - name: Build hetzner image
         run: |
           podman build --network=host \

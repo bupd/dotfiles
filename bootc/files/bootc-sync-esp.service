@@ -6,7 +6,7 @@ Before=sysinit.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/bootc-sync-esp.sh
+ExecStart=/usr/bin/bootc-sync-esp
 RemainAfterExit=yes
 
 [Install]
