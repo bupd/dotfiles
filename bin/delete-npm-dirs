@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+VERSION="1.2.0"
+
+human_size() {
+  if command -v numfmt >/dev/null 2>&1; then
+    numfmt --to=iec-i --suffix=B "$1"
+  else
+    printf '%s bytes\n' "$1"
+  fi
+}
+
+find_matches() {
+  find . -type d -name node_modules -prune -print0 2>/dev/null || true
+}
+
+dir_size_bytes() {
+  du -sb -- "$1" 2>/dev/null | awk '{print $1}'
+}
+
+usage() {
+  cat <<EOF
+delete-npm-dirs ${VERSION}
+
+Usage:
+  delete-npm-dirs
+  delete-npm-dirs delete
+  delete-npm-dirs version
+
+Description:
+  Recursively find directories named node_modules under the current directory at any depth.
+  By default, prints matches with their sizes and the total reclaimable space.
+  Use "delete" to remove them in parallel.
+
+Examples:
+  delete-npm-dirs
+  delete-npm-dirs delete
+  delete-npm-dirs version
+EOF
+}
+
+mode="${1:-list}"
+
+case "$mode" in
+  list)
+    if [[ $# -gt 1 ]]; then
+      usage >&2
+      exit 1
+    fi
+    mapfile -d '' -t matches < <(find_matches)
+    if [[ ${#matches[@]} -eq 0 ]]; then
+      printf 'No node_modules directories found.\n'
+      exit 0
+    fi
+    tmpfile="$(mktemp)"
+    trap 'rm -f "$tmpfile"' EXIT
+    total_bytes=0
+
+    for path in "${matches[@]}"; do
+      bytes="$(du -sb -- "$path" 2>/dev/null | awk '{print $1}')"
+      bytes="${bytes:-0}"
+      total_bytes=$((total_bytes + bytes))
+      printf '%s\t%s\n' "$bytes" "$path" >>"$tmpfile"
+    done
+
+    while IFS=$'\t' read -r bytes path; do
+      printf '%8s  %s\n' "$(human_size "$bytes")" "$path"
+    done < <(sort -nr "$tmpfile")
+
+    printf '\nTotal reclaimable: %s\n' "$(human_size "$total_bytes")"
+    printf 'To delete them: delete-npm-dirs delete\n'
+    ;;
+  delete)
+    if [[ $# -gt 1 ]]; then
+      usage >&2
+      exit 1
+    fi
+    mapfile -d '' -t matches < <(find_matches)
+    if [[ ${#matches[@]} -eq 0 ]]; then
+      printf 'No node_modules directories found.\n'
+      exit 0
+    fi
+    total_bytes=0
+    for path in "${matches[@]}"; do
+      bytes="$(dir_size_bytes "$path")"
+      bytes="${bytes:-0}"
+      total_bytes=$((total_bytes + bytes))
+    done
+    printf '%s\0' "${matches[@]}" | xargs -0 -r -n1 -P "$(nproc 2>/dev/null || echo 4)" rm -rf --
+    printf 'Storage relieved: %s\n' "$(human_size "$total_bytes")"
+    ;;
+  version|--version)
+    if [[ $# -gt 1 ]]; then
+      usage >&2
+      exit 1
+    fi
+    printf 'delete-npm-dirs %s\n' "$VERSION"
+    ;;
+  -h|--help|help)
+    usage
+    ;;
+  *)
+    usage >&2
+    exit 1
+    ;;
+esac
