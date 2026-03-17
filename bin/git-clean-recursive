@@ -1,0 +1,341 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+VERSION="2.1.0"
+
+human_size() {
+  if command -v numfmt >/dev/null 2>&1; then
+    numfmt --to=iec-i --suffix=B "$1"
+  else
+    printf '%s bytes\n' "$1"
+  fi
+}
+
+path_size_bytes() {
+  local path="$1"
+  local bytes
+  if [[ ! -e "$path" ]]; then
+    printf '0\n'
+    return
+  fi
+  bytes="$(du -sb -- "$path" 2>/dev/null | awk '{print $1}' || true)"
+  printf '%s\n' "${bytes:-0}"
+}
+
+preview_stats() {
+  local repo="$1"
+  local preview="$2"
+  local count=0
+  local total_bytes=0
+  local line
+  local rel_path
+  local full_path
+  local bytes
+
+  while IFS= read -r line; do
+    [[ -n "$line" ]] || continue
+    [[ "$line" == "Would remove "* ]] || continue
+
+    rel_path="${line#Would remove }"
+    rel_path="${rel_path#./}"
+    rel_path="${rel_path%/}"
+    full_path="$repo/$rel_path"
+
+    bytes="$(path_size_bytes "$full_path")"
+    bytes="${bytes:-0}"
+
+    count=$((count + 1))
+    total_bytes=$((total_bytes + bytes))
+  done <<< "$preview"
+
+  printf '%s\t%s\n' "$count" "$total_bytes"
+}
+
+is_protected_path() {
+  local rel_path="$1"
+  local pattern
+
+  rel_path="${rel_path#./}"
+  rel_path="${rel_path%/}"
+
+  [[ "$rel_path" == *".env"* ]] && return 0
+  [[ "$rel_path" == ".claude" ]] && return 0
+  [[ "$rel_path" == ".claude/"* ]] && return 0
+  [[ "$rel_path" == */".claude" ]] && return 0
+  [[ "$rel_path" == */".claude/"* ]] && return 0
+
+  for pattern in "${extra_excludes[@]}"; do
+    [[ "$rel_path" == "$pattern" ]] && return 0
+    [[ "$rel_path" == "$pattern/"* ]] && return 0
+    [[ "$rel_path" == */"$pattern" ]] && return 0
+    [[ "$rel_path" == */"$pattern/"* ]] && return 0
+  done
+
+  return 1
+}
+
+filter_preview() {
+  local preview="$1"
+  local line
+  local rel_path
+
+  while IFS= read -r line; do
+    [[ -n "$line" ]] || continue
+    [[ "$line" == "Would remove "* ]] || continue
+
+    rel_path="${line#Would remove }"
+    if is_protected_path "$rel_path"; then
+      continue
+    fi
+
+    printf '%s\n' "$line"
+  done <<< "$preview"
+}
+
+preview_paths() {
+  local preview="$1"
+  local line
+  local rel_path
+
+  while IFS= read -r line; do
+    [[ -n "$line" ]] || continue
+    [[ "$line" == "Would remove "* ]] || continue
+
+    rel_path="${line#Would remove }"
+    rel_path="${rel_path#./}"
+    rel_path="${rel_path%/}"
+
+    if is_protected_path "$rel_path"; then
+      continue
+    fi
+
+    printf '%s\0' "$rel_path"
+  done <<< "$preview"
+}
+
+usage() {
+  cat <<EOF
+git-clean-recursive ${VERSION}
+
+Usage:
+  git-clean-recursive
+  git-clean-recursive delete
+  git-clean-recursive [delete] --not-delete <pattern>
+  git-clean-recursive [delete] --ignore-dir <path>
+  git-clean-recursive version
+
+Description:
+  Recursively find Git repositories under the current directory.
+  By default, run "git clean -ndx" with built-in exclusions for anything containing .env
+  and for .claude paths.
+  Use "delete" to run "git clean -fdx" with the same exclusions.
+  This targets ignored and untracked files, preserves .env* and .claude,
+  and reports reclaimable space.
+
+Examples:
+  git-clean-recursive
+  git-clean-recursive delete
+  git-clean-recursive delete --not-delete robotvars.py
+  git-clean-recursive --ignore-dir learn/k8s
+  git-clean-recursive version
+EOF
+}
+
+build_exclude_args() {
+  pathspec_excludes=(
+    ':(exclude)*.env*'
+    ':(exclude)**/*.env*'
+    ':(exclude).claude'
+    ':(exclude)**/.claude'
+  )
+  for pattern in "${extra_excludes[@]}"; do
+    pathspec_excludes+=(":(exclude)$pattern" ":(exclude)**/$pattern")
+  done
+}
+
+print_delete_hint() {
+  printf 'To delete them: git-clean-recursive delete'
+  for pattern in "${extra_excludes[@]}"; do
+    printf ' --not-delete %q' "$pattern"
+  done
+  for dir in "${ignore_dirs[@]}"; do
+    printf ' --ignore-dir %q' "$dir"
+  done
+  printf '\n'
+}
+
+normalize_path() {
+  realpath -m -- "$1"
+}
+
+repo_is_ignored() {
+  local repo_root="$1"
+  local ignored
+
+  for ignored in "${ignore_dir_abs[@]}"; do
+    [[ "$repo_root" == "$ignored" ]] && return 0
+    [[ "$repo_root" == "$ignored"/* ]] && return 0
+  done
+
+  return 1
+}
+
+collect_repos() {
+  declare -A seen=()
+  while IFS= read -r -d '' git_entry; do
+    repo_dir="$(dirname "$git_entry")"
+    repo_root="$(git -C "$repo_dir" rev-parse --show-toplevel 2>/dev/null || true)"
+    [[ -n "$repo_root" ]] || continue
+    repo_root="$(normalize_path "$repo_root")"
+    repo_is_ignored "$repo_root" && continue
+    [[ -n "${seen[$repo_root]:-}" ]] && continue
+    seen["$repo_root"]=1
+    printf '%s\0' "$repo_root"
+  done < <(
+    find . \
+      \( -type d -name .git -prune -print0 \) -o \
+      \( -type f -name .git -print0 \) \
+      2>/dev/null || true
+  )
+}
+
+display_path() {
+  local path="$1"
+  if [[ "$path" == "$PWD" ]]; then
+    printf '.\n'
+    return
+  fi
+  printf './%s\n' "${path#"$PWD"/}"
+}
+
+mode="list"
+extra_excludes=()
+ignore_dirs=()
+ignore_dir_abs=()
+
+if [[ $# -gt 0 ]]; then
+  case "$1" in
+    list|delete|version|--version|help|-h|--help)
+      mode="$1"
+      shift
+      ;;
+  esac
+fi
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --not-delete)
+      [[ $# -ge 2 ]] || {
+        echo "missing value for --not-delete" >&2
+        exit 1
+      }
+      extra_excludes+=("$2")
+      shift 2
+      ;;
+    --ignore-dir)
+      [[ $# -ge 2 ]] || {
+        echo "missing value for --ignore-dir" >&2
+        exit 1
+      }
+      ignore_dirs+=("$2")
+      ignore_dir_abs+=("$(normalize_path "$2")")
+      shift 2
+      ;;
+    *)
+      usage >&2
+      exit 1
+      ;;
+  esac
+done
+
+build_exclude_args
+
+case "$mode" in
+  list)
+    mapfile -d '' -t repos < <(collect_repos)
+    if [[ ${#repos[@]} -eq 0 ]]; then
+      printf 'No Git repositories found.\n'
+      exit 0
+    fi
+
+    repo_count=0
+    item_count=0
+    total_bytes=0
+
+    for repo in "${repos[@]}"; do
+      raw_output="$(git -C "$repo" clean -ndx -- "${pathspec_excludes[@]}" 2>/dev/null || true)"
+      output="$(filter_preview "$raw_output")"
+      [[ -n "$output" ]] || continue
+
+      IFS=$'\t' read -r current_count current_bytes < <(preview_stats "$repo" "$output")
+      [[ "${current_count:-0}" -gt 0 ]] || continue
+
+      repo_count=$((repo_count + 1))
+      item_count=$((item_count + current_count))
+      total_bytes=$((total_bytes + current_bytes))
+
+      printf '== %s ==\n' "$(display_path "$repo")"
+      printf '%s\n\n' "$output"
+      printf 'Reclaimable here: %s\n\n' "$(human_size "$current_bytes")"
+    done
+
+    if [[ "$repo_count" -eq 0 ]]; then
+      printf 'No ignored files to clean.\n'
+      exit 0
+    fi
+
+    printf 'Repositories with matches: %d\n' "$repo_count"
+    printf 'Ignored paths matched: %d\n' "$item_count"
+    printf 'Total reclaimable: %s\n' "$(human_size "$total_bytes")"
+    print_delete_hint
+    ;;
+  delete)
+    mapfile -d '' -t repos < <(collect_repos)
+    if [[ ${#repos[@]} -eq 0 ]]; then
+      printf 'No Git repositories found.\n'
+      exit 0
+    fi
+
+    repo_count=0
+    item_count=0
+    total_bytes=0
+
+    for repo in "${repos[@]}"; do
+      raw_preview="$(git -C "$repo" clean -ndx -- "${pathspec_excludes[@]}" 2>/dev/null || true)"
+      preview="$(filter_preview "$raw_preview")"
+      [[ -n "$preview" ]] || continue
+
+      IFS=$'\t' read -r current_count current_bytes < <(preview_stats "$repo" "$preview")
+      [[ "${current_count:-0}" -gt 0 ]] || continue
+
+      repo_count=$((repo_count + 1))
+      item_count=$((item_count + current_count))
+      total_bytes=$((total_bytes + current_bytes))
+
+      printf '== %s ==\n' "$(display_path "$repo")"
+      while IFS= read -r -d '' rel_path; do
+        git -C "$repo" clean -fdx -- "$rel_path" 2>/dev/null || true
+      done < <(preview_paths "$raw_preview")
+      printf '\n'
+    done
+
+    if [[ "$repo_count" -eq 0 ]]; then
+      printf 'No ignored files to clean.\n'
+      exit 0
+    fi
+
+    printf 'Repositories cleaned: %d\n' "$repo_count"
+    printf 'Ignored paths removed: %d\n' "$item_count"
+    printf 'Storage relieved: %s\n' "$(human_size "$total_bytes")"
+    ;;
+  version|--version)
+    printf 'git-clean-recursive %s\n' "$VERSION"
+    ;;
+  -h|--help|help)
+    usage
+    ;;
+  *)
+    usage >&2
+    exit 1
+    ;;
+esac
