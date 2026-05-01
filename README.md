@@ -47,17 +47,45 @@ Ensure you have GNU Stow installed on your system. You can typically install it 
 This repository contains the following configuration files and scripts:
 
 - `.config` - Configuration directory
+- `AGENT-CONFIG.md` - AI agent configuration guide
 - `i3` - i3 window manager configuration
 - `i3status` - i3status configuration
+- `keyboard` - Corne V3 keyboard layout configuration
+- `kitty` - Kitty terminal emulator configuration
+- `lazygit` - Lazygit TUI configuration
 - `nvim` - Neovim configuration
 - `pactl.sh` - Script for managing PulseAudio
 - `pactlVmic.sh` - Script for managing PulseAudio virtual microphone
 - `picom.conf` - Picom (compositor) configuration
 - `powerkill.sh` - Script to handle power-related actions
-- `scripts` - Directory containing various utility scripts
+- `scripts` - Directory containing various utility scripts (see below)
 - `sessionizer` - Script for TMUX session management
+- `streamStart.sh` - Script to set up PulseAudio sinks for streaming
+- `streamKill.sh` - Script to tear down streaming audio setup
+- `theme.conf` - Theme configuration
+- `tmux` - Tmux terminal multiplexer configuration
+- `xremap` - Key remapping configuration
+- `yt-dlp` - yt-dlp download configuration
+- `ytdl-sub` - ytdl-sub subscription downloader configuration
 - `.xinitrc` - X11 initialization script
 - `.zshrc` - Zsh shell configuration
+
+### Scripts
+
+Utility scripts in the `scripts/` directory:
+
+- `airdopes` - Bluetooth pairing/connect automation for Airdopes earbuds
+- `batch-delete.sh` - Delete files listed in a text file (one path per line)
+- `cputemp` - Display CPU and NVMe temperatures with color-coded output for i3status
+- `images.sh` - Pull, tag, and push a set of Docker images to a local registry
+- `load-scripts` - Copy scripts to /usr/bin for system-wide access
+- `newver-checker` - Run nvchecker across subdirectories to check for new package versions
+- `nvim-migrate.sh` - Migrate NvChad v2 custom config to the v3 starter template
+- `rm-harbor-clean.sh` - Clean up Harbor-related build artifacts
+- `rm-node_modules.sh` - Recursively find and delete all node_modules directories
+- `stt-start.sh` - Start nerd-dictation speech-to-text with Vosk model
+- `stt-stop.sh` - Stop nerd-dictation speech-to-text
+- `watchtime` - Calculate total video duration in a directory tree
 
 ### **📸 My Keyboard Layout - Corne V3**
 
