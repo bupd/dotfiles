@@ -7,7 +7,7 @@ required_programs=(
     "i3"
     "i3status"
     "fzf"
-    "alacritty"
+    "alacritty"     # NOTE: may be stale — kitty is now the primary terminal
     "xdotool"
     "xbindkeys"
     "tmux"
@@ -17,10 +17,12 @@ required_programs=(
     "zsh"
     "bash"
     "xremap"
-    "asdf"
-    "microsoft-edge-stable"
-    "node"
-    "ng"
+    "kitty"
+    "lazygit"
+    "asdf"              # NOTE: may be stale — consider replacing with mise or removing
+    "microsoft-edge-stable"  # NOTE: may be stale — verify this is still in use
+    "node"              # NOTE: may be stale if managed via asdf/mise
+    "ng"                # NOTE: may be stale — Angular CLI, verify still needed
 )
 
 # Check for missing programs

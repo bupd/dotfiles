@@ -46,9 +46,18 @@ Ensure you have GNU Stow installed on your system. You can typically install it 
 
 This repository contains the following configuration files and scripts:
 
-- `.config` - Configuration directory
+- `.p10k.zsh` - Powerlevel10k Zsh theme configuration
+- `.xbindkeysrc` - Xbindkeys key-binding configuration
+- `.xinitrc` - X11 initialization script
+- `.zshenv` - Zsh environment variables
+- `check_dependencies.sh` - Script to verify required programs are installed
+- `guide-to-qutebrowser-adblock.md` - Guide for setting up adblocking in qutebrowser
 - `i3` - i3 window manager configuration
 - `i3status` - i3status configuration
+- `keyboard` - Corne V3 keyboard layout files
+- `kitty` - Kitty terminal emulator configuration directory
+- `kitty.conf` - Kitty terminal emulator configuration
+- `lazygit` - Lazygit configuration
 - `nvim` - Neovim configuration
 - `pactl.sh` - Script for managing PulseAudio
 - `pactlVmic.sh` - Script for managing PulseAudio virtual microphone
@@ -56,8 +65,13 @@ This repository contains the following configuration files and scripts:
 - `powerkill.sh` - Script to handle power-related actions
 - `scripts` - Directory containing various utility scripts
 - `sessionizer` - Script for TMUX session management
-- `.xinitrc` - X11 initialization script
-- `.zshrc` - Zsh shell configuration
+- `streamKill.sh` - Script to stop streaming
+- `streamStart.sh` - Script to start streaming
+- `theme.conf` - Theme configuration
+- `tmux` - Tmux terminal multiplexer configuration
+- `xremap` - Xremap key remapping configuration
+- `yt-dlp` - yt-dlp download configuration
+- `ytdl-sub` - ytdl-sub subscription configuration
 
 ### **📸 My Keyboard Layout - Corne V3**
 
