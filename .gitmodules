@@ -1,0 +1,3 @@
+[submodule "whisper-arch-i3"]
+	path = whisper-arch-i3
+	url = git@github.com:bupd/whisper-arch-i3.git
