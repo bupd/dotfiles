@@ -5,6 +5,14 @@ if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]
   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
 fi
 
+# Homebrew
+if [[ -x /home/linuxbrew/.linuxbrew/bin/brew ]]; then
+  eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+  if (( ${fpath[(Ie)${HOMEBREW_PREFIX}/share/zsh/site-functions]} == 0 )); then
+    fpath=("${HOMEBREW_PREFIX}/share/zsh/site-functions" $fpath)
+  fi
+fi
+
 # Set the directory we want to store zinit and plugins
 ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
 
@@ -106,6 +114,11 @@ alias kctx="kubectx"
 alias d="docker"
 alias dc="docker compose"
 alias refresh-camera="sudo usermod -aG video $USER"
+alias task="go-task"
+
+if [[ -r "$HOME/dotfiles/.zshrc-secret" ]]; then
+  source "$HOME/dotfiles/.zshrc-secret"
+fi
 
 # Neovim SOLOS the Editors
 export EDITOR="nvim"
@@ -142,13 +155,8 @@ eval "$(fzf --zsh)"
 # [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 # [ -s "$NVM_DIR/zsh_completion" ] && \. "$NVM_DIR/zsh_completion"  # This loads nvm zsh_completion
 
-# for dagger harbor push
-export REGPASS="Harbor12345"
-
 # Load Angular CLI autocompletion.
 # source <(ng completion script)
-
-# eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 
 # The next line updates PATH for the Google Cloud SDK.
 if [ -f '/home/bupd/s/code/update/google-cloud-sdk/path.zsh.inc' ]; then . '/home/bupd/s/code/update/google-cloud-sdk/path.zsh.inc'; fi
@@ -196,3 +204,5 @@ precmd() { eval "$PROMPT_COMMAND" }
 # XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
 # export DOCKER_HOST=unix://$XDG_RUNTIME_DIR/podman/podman.sock
 # export DOCKER_SOCK=$XDG_RUNTIME_DIR/podman/podman.sock
+# opencode
+export PATH=/home/bupdlap/.opencode/bin:$PATH
