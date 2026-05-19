@@ -233,7 +233,6 @@ assign [class="whatsapp-electron"] $ws4
 assign [class="obsidian"] $ws10
 assign [class="obs"] $ws9
 assign [class="Spotify"] $ws7
-assign [class="Slack"] $ws8
 assign [class="discord"] $ws9
 
 bindsym $mod+Control+1 [class="obsidian"] move workspace 1; workspace 1
@@ -253,7 +252,6 @@ exec_always clipmenud
 # exec_always sleep 4 && env LD_PRELOAD=/usr/lib/spotify-adblock.so spotify &
 # exec sleep 2 && brave
 # exec discord
-# exec slack
 # exec microsoft-edge-stable
 # exec google-chrome-stable
 # exec_always ~/go/bin/digital-wellbeing &
