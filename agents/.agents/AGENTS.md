@@ -32,6 +32,9 @@ stop and return to me to discuss if anything requires a significant refactor.
 # Go
 When working on a Go project or encountering .go files, always use the MCP gopls-lsp server for diagnostics, go-to-definition, find-references, and symbol lookups. Prefer gopls-lsp MCP tools over manual grep/glob for Go-specific operations.
 
+# Browser
+Use Brave for Playwright/browser automation. Chrome does not have the required Playwright extension installed.
+
 # Commits
 after every logical change, create a conventional commit using `git commit -sm "message"`.
 keep commit messages short, no description body, no ai credits.
