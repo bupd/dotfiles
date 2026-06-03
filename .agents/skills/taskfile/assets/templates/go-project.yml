@@ -1,0 +1,106 @@
+# Go project with lint, test, build
+version: '3'
+
+vars:
+  APP_NAME: '{{default "app" .APP_NAME}}'
+  GO_FILES:
+    sh: find . -type f -name '*.go' -not -path "./vendor/*"
+
+env:
+  CGO_ENABLED: 0
+  
+tasks:
+  default:
+    desc: Run lint, test, and build
+    cmds:
+      - task: lint
+      - task: test
+      - task: build
+
+  mod:
+    desc: Download and tidy Go modules
+    sources:
+      - go.mod
+      - go.sum
+    cmds:
+      - go mod download
+      - go mod tidy
+
+  lint:
+    desc: Run golangci-lint
+    deps: [mod]
+    sources:
+      - '**/*.go'
+      - .golangci.yml
+    cmds:
+      - golangci-lint run ./...
+
+  test:
+    desc: Run tests with coverage
+    deps: [mod]
+    sources:
+      - '**/*.go'
+    cmds:
+      - go test -race -coverprofile=coverage.out ./...
+      - go tool cover -func=coverage.out
+
+  test:unit:
+    desc: Run unit tests only
+    cmds:
+      - go test -short -v ./...
+
+  test:integration:
+    desc: Run integration tests
+    cmds:
+      - go test -run Integration -v ./...
+
+  build:
+    desc: Build the application
+    deps: [mod]
+    sources:
+      - '**/*.go'
+      - go.mod
+    generates:
+      - ./bin/{{.APP_NAME}}
+    cmds:
+      - go build -ldflags="-s -w -X main.Version={{.VERSION}}" -o bin/{{.APP_NAME}} ./cmd
+
+  build:all:
+    desc: Build for all platforms
+    cmds:
+      - for:
+          matrix:
+            OS: [linux, darwin, windows]
+            ARCH: [amd64, arm64]
+        cmd: |
+          GOOS={{.ITEM.OS}} GOARCH={{.ITEM.ARCH}} \
+          go build -o dist/{{.APP_NAME}}-{{.ITEM.OS}}-{{.ITEM.ARCH}}{{if eq .ITEM.OS "windows"}}.exe{{end}} \
+          ./cmd
+
+  run:
+    desc: Run the application
+    deps: [build]
+    cmds:
+      - ./bin/{{.APP_NAME}}
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - rm -rf bin/ dist/ coverage.out
+
+  fmt:
+    desc: Format Go code
+    cmds:
+      - gofmt -s -w {{.GO_FILES}}
+      - goimports -w {{.GO_FILES}}
+
+  docker:build:
+    desc: Build Docker image
+    cmds:
+      - docker build -t {{.APP_NAME}}:{{.VERSION}} .
+
+  docker:run:
+    desc: Run Docker container
+    deps: [docker:build]
+    cmds:
+      - docker run --rm -it {{.APP_NAME}}:{{.VERSION}}
