@@ -4,6 +4,8 @@ set -u
 
 app_name="Speech To Text"
 model="${STT_MODEL:-base.en}"
+source="${STT_SOURCE:-default}"
+silence_threshold_db="${STT_SILENCE_THRESHOLD_DB:--70}"
 runtime_base="${XDG_RUNTIME_DIR:-/tmp}"
 
 if [ -n "${XDG_RUNTIME_DIR:-}" ]; then
@@ -62,6 +64,29 @@ cleanup_stale_pid() {
     fi
 }
 
+recording_has_speech() {
+    max_volume_db="$(ffmpeg -hide_banner -nostats -i "$recording_file" -af volumedetect -f null - 2>&1 |
+        while IFS= read -r line; do
+            case "$line" in
+                *"max_volume:"*)
+                    value="${line#*max_volume: }"
+                    printf '%s\n' "${value%% dB*}"
+                    ;;
+            esac
+        done)"
+    if [ -z "$max_volume_db" ]; then
+        fail "Could not measure recording volume."
+    fi
+
+    case "$max_volume_db" in
+        -inf|inf)
+            return 1
+            ;;
+    esac
+
+    [ "${max_volume_db%%.*}" -gt "$silence_threshold_db" ]
+}
+
 start_recording() {
     require_command ffmpeg
     require_command whisper
@@ -72,7 +97,7 @@ start_recording() {
     mkdir -p "$output_dir"
 
     ffmpeg -y -hide_banner -loglevel error \
-        -f pulse -i default \
+        -f pulse -i "$source" \
         -ar 16000 -ac 1 \
         "$recording_file" >/dev/null 2>&1 &
 
@@ -95,6 +120,7 @@ stop_recording() {
 
     require_command whisper
     require_command xdotool
+    require_command ffmpeg
 
     notify low 1200 "STT" "Recording saved."
     kill -INT "$pid" 2>/dev/null || true
@@ -114,6 +140,11 @@ stop_recording() {
 
     if [ ! -s "$recording_file" ]; then
         fail "Recording file is empty."
+    fi
+
+    if ! recording_has_speech; then
+        notify normal 3500 "STT" "No speech detected. Check STT_SOURCE or microphone input."
+        return
     fi
 
     rm -rf "$output_dir"
