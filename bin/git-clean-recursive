@@ -59,11 +59,6 @@ is_protected_path() {
   rel_path="${rel_path%/}"
 
   [[ "$rel_path" == *".env"* ]] && return 0
-  [[ "$rel_path" == ".claude" ]] && return 0
-  [[ "$rel_path" == ".claude/"* ]] && return 0
-  [[ "$rel_path" == */".claude" ]] && return 0
-  [[ "$rel_path" == */".claude/"* ]] && return 0
-
   for pattern in "${extra_excludes[@]}"; do
     [[ "$rel_path" == "$pattern" ]] && return 0
     [[ "$rel_path" == "$pattern/"* ]] && return 0
@@ -126,11 +121,9 @@ Usage:
 
 Description:
   Recursively find Git repositories under the current directory.
-  By default, run "git clean -ndx" with built-in exclusions for anything containing .env
-  and for .claude paths.
+  By default, run "git clean -ndx" with built-in exclusions for anything containing .env.
   Use "delete" to run "git clean -fdx" with the same exclusions.
-  This targets ignored and untracked files, preserves .env* and .claude,
-  and reports reclaimable space.
+  This targets ignored and untracked files, preserves .env*, and reports reclaimable space.
 
 Examples:
   git-clean-recursive
@@ -145,8 +138,6 @@ build_exclude_args() {
   pathspec_excludes=(
     ':(exclude)*.env*'
     ':(exclude)**/*.env*'
-    ':(exclude).claude'
-    ':(exclude)**/.claude'
   )
   for pattern in "${extra_excludes[@]}"; do
     pathspec_excludes+=(":(exclude)$pattern" ":(exclude)**/$pattern")
