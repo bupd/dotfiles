@@ -1,3 +1,3 @@
 #!/bin/sh
-dunstify -C 9999
-nerd-dictation end
+
+"$HOME/dotfiles/scripts/stt-start.sh" --stop
