@@ -195,7 +195,7 @@ mode "resize" {
 
 bindsym $mod+r mode "resize"
 bindsym $mod+period exec --no-startup-id emoji-picker
-bindsym $mod+Shift+m exec --no-startup-id /home/bupdlap/dotfiles/whisper-arch-i3/voice-type-toggle
+bindsym Control+backslash exec --no-startup-id /home/bupdlap/dotfiles/whisper-arch-i3/voice-type-toggle
 
 # Resize windows
 # Resizing windows by 10 in i3 using keyboard only
