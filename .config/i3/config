@@ -244,7 +244,7 @@ bindsym $mod+Control+0 [class="obsidian"] move workspace 10; workspace 10
 # start keyboard remap
 # exec sudo xremap ~/.config/xremap/config.yml &
 
-exec alacritty
+exec ghostty
 exec_always clipmenud
 # exec_always source /usr/share/nvm/init-nvm.sh
 exec_always xbindkeys
