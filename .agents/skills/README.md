@@ -29,3 +29,5 @@ Installed from `mattpocock/skills`:
 - `to-prd` - Turn conversation context into a PRD.
 - `zoom-out` - Explain code at a higher abstraction level.
 - `prototype` - Build throwaway prototypes for logic or UI questions.
+- `github-actions-taskfile` - Write thin GitHub Actions CI/CD workflows that call Taskfile tasks.
+- `git-worktree-management` - Manage Git worktrees, bare layouts, branch sync, cleanup, and recovery.
