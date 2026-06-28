@@ -7,6 +7,11 @@ model="${STT_MODEL:-base.en}"
 source="${STT_SOURCE:-default}"
 silence_threshold_db="${STT_SILENCE_THRESHOLD_DB:--70}"
 runtime_base="${XDG_RUNTIME_DIR:-/tmp}"
+script_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+whisper_image="${STT_WHISPER_IMAGE:-localhost/dotfiles-whisper:latest}"
+whisper_container_engine="${STT_CONTAINER_ENGINE:-}"
+whisper_device="${STT_WHISPER_DEVICE:-auto}"
+whisper_gpu="${STT_WHISPER_GPU:-auto}"
 
 if [ -n "${XDG_RUNTIME_DIR:-}" ]; then
     runtime_dir="$runtime_base/stt"
@@ -19,6 +24,8 @@ recording_file="$runtime_dir/recording.wav"
 transcript_file="$runtime_dir/transcript.txt"
 output_dir="$runtime_dir/whisper-output"
 lock_dir="$runtime_dir/lock"
+whisper_cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/whisper"
+whisper_containerfile="$script_dir/whisper/Dockerfile"
 
 notify() {
     urgency="$1"
@@ -43,14 +50,142 @@ require_command() {
         return
     fi
 
-    case "$1" in
-        whisper)
-            fail "Missing command: whisper. Install python-openai-whisper."
+    fail "Missing command: $1"
+}
+
+container_engine() {
+    if [ -n "$whisper_container_engine" ]; then
+        printf '%s\n' "$whisper_container_engine"
+        return
+    fi
+
+    if command -v podman >/dev/null 2>&1; then
+        printf '%s\n' podman
+        return
+    fi
+
+    if command -v docker >/dev/null 2>&1; then
+        printf '%s\n' docker
+        return
+    fi
+
+    fail "Missing command: podman or docker."
+}
+
+whisper_image_exists() {
+    engine="$1"
+
+    "$engine" image inspect "$whisper_image" >/dev/null 2>&1
+}
+
+ensure_whisper_image() {
+    engine="$1"
+
+    if whisper_image_exists "$engine"; then
+        return
+    fi
+
+    if [ ! -f "$whisper_containerfile" ]; then
+        fail "Missing Whisper container file: $whisper_containerfile"
+    fi
+
+    notify normal 0 "STT" "Building Whisper container image."
+    if ! "$engine" build -t "$whisper_image" -f "$whisper_containerfile" "$script_dir/whisper"; then
+        fail "Could not build Whisper container image."
+    fi
+}
+
+use_gpu() {
+    case "$whisper_gpu" in
+        1|true|yes|on)
+            return 0
             ;;
-        *)
-            fail "Missing command: $1"
+        0|false|no|off)
+            return 1
             ;;
     esac
+
+    command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -L >/dev/null 2>&1
+}
+
+resolved_whisper_device() {
+    if [ "$whisper_device" != auto ]; then
+        printf '%s\n' "$whisper_device"
+        return
+    fi
+
+    if use_gpu; then
+        printf '%s\n' cuda
+    else
+        printf '%s\n' cpu
+    fi
+}
+
+resolved_whisper_fp16() {
+    if use_gpu; then
+        printf '%s\n' True
+    else
+        printf '%s\n' False
+    fi
+}
+
+run_whisper() {
+    engine="$(container_engine)"
+    device="$(resolved_whisper_device)"
+    fp16="$(resolved_whisper_fp16)"
+    require_command "$engine"
+    mkdir -p "$whisper_cache_dir"
+    ensure_whisper_image "$engine"
+
+    if [ "$engine" = podman ]; then
+        if use_gpu; then
+            gpu_args="--device=nvidia.com/gpu=all --security-opt=label=disable"
+        else
+            gpu_args=""
+        fi
+
+        # shellcheck disable=SC2086
+        "$engine" run --rm \
+            --userns=keep-id \
+            $gpu_args \
+            -v "$runtime_dir:/work" \
+            -v "$whisper_cache_dir:/cache" \
+            -w /work \
+            "$whisper_image" \
+            recording.wav \
+            --model "$model" \
+            --model_dir /cache \
+            --device "$device" \
+            --language en \
+            --task transcribe \
+            --fp16 "$fp16" \
+            --output_format txt \
+            --output_dir whisper-output || fail "Whisper transcription failed."
+    else
+        if use_gpu; then
+            gpu_args="--gpus all"
+        else
+            gpu_args=""
+        fi
+
+        # shellcheck disable=SC2086
+        "$engine" run --rm \
+            $gpu_args \
+            --user "$(id -u):$(id -g)" \
+            -v "$runtime_dir:/work" \
+            -v "$whisper_cache_dir:/cache" \
+            -w /work \
+            "$whisper_image" \
+            recording.wav \
+            --model "$model" \
+            --model_dir /cache \
+            --device "$device" \
+            --language en \
+            --task transcribe \
+            --fp16 "$fp16" \
+            --output_format txt \
+            --output_dir whisper-output || fail "Whisper transcription failed."
+    fi
 }
 
 cleanup_stale_pid() {
@@ -89,8 +224,8 @@ recording_has_speech() {
 
 start_recording() {
     require_command ffmpeg
-    require_command whisper
     require_command xdotool
+    container_engine >/dev/null
 
     rm -f "$recording_file" "$transcript_file"
     rm -rf "$output_dir"
@@ -118,9 +253,9 @@ stop_recording() {
         return
     fi
 
-    require_command whisper
     require_command xdotool
     require_command ffmpeg
+    container_engine >/dev/null
 
     notify low 1200 "STT" "Recording saved."
     kill -INT "$pid" 2>/dev/null || true
@@ -152,15 +287,7 @@ stop_recording() {
 
     notify normal 0 "STT" "Transcribing with Whisper $model."
 
-    if ! whisper "$recording_file" \
-        --model "$model" \
-        --language en \
-        --task transcribe \
-        --fp16 False \
-        --output_format txt \
-        --output_dir "$output_dir" >/dev/null 2>&1; then
-        fail "Whisper transcription failed."
-    fi
+    run_whisper
 
     whisper_txt="$output_dir/$(basename "${recording_file%.*}").txt"
     if [ ! -f "$whisper_txt" ]; then

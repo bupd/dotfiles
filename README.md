@@ -103,9 +103,14 @@ Utility scripts in the `scripts/` directory:
 - `nvim-migrate.sh` - Migrate NvChad v2 custom config to the v3 starter template
 - `rm-harbor-clean.sh` - Clean up Harbor-related build artifacts
 - `rm-node_modules.sh` - Recursively find and delete all node_modules directories
-- `stt-start.sh` - Start nerd-dictation speech-to-text with Vosk model
+- `stt-start.sh` - Record speech, transcribe with containerized Whisper, and type the transcript
 - `stt-stop.sh` - Stop nerd-dictation speech-to-text
 - `watchtime` - Calculate total video duration in a directory tree
+
+`stt-start.sh` runs Whisper inside the `scripts/whisper/Dockerfile` image. The host
+does not need Whisper, PyTorch, NumPy, or Numba installed; it only needs the
+recording/typing tools plus Podman or Docker. NVIDIA GPU passthrough is used
+automatically when available. Set `STT_WHISPER_GPU=off` to force CPU mode.
 
 ### **📸 My Keyboard Layout - Corne V3**
 | Tool | Config |
