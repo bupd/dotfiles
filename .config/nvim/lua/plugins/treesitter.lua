@@ -1,6 +1,7 @@
 return {
   {
     "nvim-treesitter/nvim-treesitter",
+    branch = "master",
 
     config = function()
       require("nvim-treesitter.configs").setup {
@@ -76,6 +77,7 @@ return {
       }
 
       vim.treesitter.language.register("templ", "templ")
+      require("configs.treesitter_compat").setup()
     end,
   },
 
