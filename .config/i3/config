@@ -256,7 +256,8 @@ exec sleep 2 && brave
 # exec microsoft-edge-stable
 # exec google-chrome-stable
 # exec_always ~/go/bin/digital-wellbeing &
-exec_always ~/go/bin/dw &
+## we need to fix the dw first
+# exec_always ~/go/bin/dw &
 
 # Speech-to-text (notification ID 9999 is unique to this)
 bindsym Control+backslash exec --no-startup-id ~/dotfiles/scripts/stt-start.sh
