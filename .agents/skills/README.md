@@ -29,3 +29,11 @@ Installed from `mattpocock/skills`:
 - `to-prd` - Turn conversation context into a PRD.
 - `zoom-out` - Explain code at a higher abstraction level.
 - `prototype` - Build throwaway prototypes for logic or UI questions.
+
+## Other Shared Skills
+
+- `diff-explain` - Create rich explanations of diffs, branches, commits, and PRs as HTML or Notion artifacts.
+- `first-principles-thinking` - Deconstruct software and strategy problems to fundamentals, then rebuild ground-up solutions.
+- `stack` - Use the local squash-safe `stack` CLI for stacked PR repair.
+- `playwright-cli` - Automate browser interactions, test web pages, and work with Playwright tests.
+- `playwright-skill` - Markdown-only Playwright browser automation workflow adapted from lackeyjb/playwright-skill.

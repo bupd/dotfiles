@@ -1,0 +1,4 @@
+interface:
+  display_name: "Idiomatic Jujutsu"
+  short_description: "Use Jujutsu safely and idiomatically"
+  default_prompt: "Use $idiomatic-jj to operate on this Jujutsu repository idiomatically."
