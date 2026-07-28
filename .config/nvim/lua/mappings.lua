@@ -67,6 +67,7 @@ end, { desc = "Toggle deleted" })
 map("n", "<C-h>", "<cmd> TmuxNavigateLeft<CR>", { desc = "window left" })
 map("n", "<C-l>", "<cmd> TmuxNavigateRight<CR>", { desc = "window right" })
 map("n", "<C-j>", "<cmd> TmuxNavigateDown<CR>", { desc = "window down" })
+map("n", "<C-k>", "<cmd> TmuxNavigateUp<CR>", { desc = "window up" })
 
 -- Toggle undotree
 map("n", "<leader>u", "<cmd> UndotreeToggle <CR>", { desc = "Toggle undotree" })
