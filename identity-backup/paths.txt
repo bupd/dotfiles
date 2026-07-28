@@ -1,0 +1,31 @@
+# Paths are relative to your home directory.
+# Blank lines and lines beginning with # are ignored.
+
+# SSH keys and configuration
+.ssh
+
+# GPG private keys, public keys, and trust database
+.gnupg
+
+# SOPS and age keys
+.config/sops
+.config/age
+.age
+
+# Docker login, contexts, and configuration
+.docker
+
+# Kubernetes configs, including .kube/*.kubeconfig.yaml
+.kube
+
+# Other common identity and credential files
+.gitconfig
+.config/git
+.password-store
+.local/share/keyrings
+.netrc
+.authinfo
+.config/gh
+.config/glab
+.aws
+.azure
