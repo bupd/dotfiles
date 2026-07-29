@@ -1,0 +1,81 @@
+configuration {
+    modi: "drun,run,window";
+    show-icons: true;
+    terminal: "ghostty";
+    drun-display-format: "{name}";
+    matching: "fuzzy";
+    sort: true;
+    kb-row-up: "Up,Control+k";
+    kb-row-down: "Down,Control+j";
+    kb-accept-entry: "Return,KP_Enter";
+    kb-remove-to-eol: "Control+Shift+e";
+}
+
+* {
+    background: #1f2430ee;
+    foreground: #eceff4ff;
+    muted: #9aa5b1ff;
+    accent: #88c0d0ff;
+    selected: #3b4252ff;
+    border: #88c0d0ff;
+}
+
+window {
+    width: 44em;
+    border: 2px;
+    border-color: @border;
+    border-radius: 8px;
+    background-color: @background;
+}
+
+mainbox {
+    padding: 14px;
+    spacing: 10px;
+}
+
+inputbar {
+    padding: 8px 10px;
+    border: 1px;
+    border-color: #3b4252ff;
+    border-radius: 6px;
+    background-color: #252b38ff;
+    children: [ prompt, entry ];
+}
+
+prompt {
+    text-color: @accent;
+    margin: 0 8px 0 0;
+}
+
+entry {
+    text-color: @foreground;
+    placeholder: "Launch";
+    placeholder-color: @muted;
+}
+
+listview {
+    lines: 12;
+    columns: 1;
+    fixed-height: true;
+    spacing: 4px;
+}
+
+element {
+    padding: 8px 10px;
+    border-radius: 6px;
+    text-color: @foreground;
+}
+
+element selected {
+    background-color: @selected;
+    text-color: #ffffffff;
+}
+
+element-icon {
+    size: 1.1em;
+    margin: 0 10px 0 0;
+}
+
+element-text {
+    text-color: inherit;
+}
