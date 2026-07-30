@@ -1,81 +1,131 @@
+@theme "/dev/null"
+@import "colors.rasi"
+
 configuration {
-    modi: "drun,run,window";
+    modes: "search:~/dotfiles/bin/rofi-raycast,web:~/dotfiles/bin/rofi-web-search,drun,clipboard:~/dotfiles/bin/rofi-cliphist,calc:~/dotfiles/bin/rofi-calc,emoji:~/dotfiles/bin/rofi-emoji,run,window";
+    combi-modes: "web,drun";
+    combi-hide-mode-prefix: true;
+    combi-display-format: "{text}";
+    kb-accept-custom: "";
+    kb-accept-custom-alt: "";
+    display-combi: "Search";
+    display-search: "Search";
+    display-drun: "Apps";
+    display-web: "Web";
+    display-clipboard: "Clipboard";
+    display-calc: "Calc";
+    display-emoji: "Emoji";
+    display-run: "Run";
+    display-window: "Windows";
+    drun-display-format: "{icon} {name}";
+    font: "JetBrainsMono Nerd Font 11";
     show-icons: true;
+    icon-theme: "Colloid";
     terminal: "ghostty";
-    drun-display-format: "{name}";
     matching: "fuzzy";
     sort: true;
-    kb-row-up: "Up,Control+k";
-    kb-row-down: "Down,Control+j";
-    kb-accept-entry: "Return,KP_Enter";
-    kb-remove-to-eol: "Control+Shift+e";
-}
-
-* {
-    background: #1f2430ee;
-    foreground: #eceff4ff;
-    muted: #9aa5b1ff;
-    accent: #88c0d0ff;
-    selected: #3b4252ff;
-    border: #88c0d0ff;
 }
 
 window {
-    width: 44em;
-    border: 2px;
-    border-color: @border;
-    border-radius: 8px;
-    background-color: @background;
+    transparency: "real";
+    location: center;
+    anchor: center;
+    width: 680px;
+    border: 1px;
+    border-color: #ffffff1f;
+    border-radius: 14px;
+    background-color: #0b0f14f2;
 }
 
 mainbox {
-    padding: 14px;
-    spacing: 10px;
+    padding: 8px;
+    spacing: 6px;
+    background-color: transparent;
+    children: [ "inputbar", "listview", "mode-switcher" ];
 }
 
 inputbar {
-    padding: 8px 10px;
-    border: 1px;
-    border-color: #3b4252ff;
-    border-radius: 6px;
-    background-color: #252b38ff;
-    children: [ prompt, entry ];
+    padding: 12px 14px;
+    spacing: 12px;
+    border-radius: 10px;
+    background-color: #111820f5;
+    text-color: @on-surface;
+    children: [ "textbox-prompt-colon", "entry" ];
 }
 
-prompt {
-    text-color: @accent;
-    margin: 0 8px 0 0;
+textbox-prompt-colon {
+    str: "󰍉";
+    expand: false;
+    text-color: @primary;
+    background-color: transparent;
 }
 
 entry {
-    text-color: @foreground;
-    placeholder: "Launch";
-    placeholder-color: @muted;
+    expand: true;
+    placeholder: "Search";
+    placeholder-color: @on-surface-variant;
+    text-color: @on-surface;
+    background-color: transparent;
+    horizontal-align: 0.0;
+    cursor: text;
 }
 
 listview {
-    lines: 12;
+    lines: 8;
     columns: 1;
     fixed-height: true;
+    dynamic: true;
+    scrollbar: false;
     spacing: 4px;
+    background-color: transparent;
 }
 
 element {
-    padding: 8px 10px;
-    border-radius: 6px;
-    text-color: @foreground;
+    padding: 10px 12px;
+    spacing: 12px;
+    border-radius: 9px;
+    background-color: transparent;
+    text-color: @on-surface;
 }
 
 element selected {
-    background-color: @selected;
-    text-color: #ffffffff;
+    background-color: @primary;
+    text-color: @on-primary;
 }
 
 element-icon {
-    size: 1.1em;
-    margin: 0 10px 0 0;
+    size: 24px;
+    background-color: transparent;
+    text-color: inherit;
 }
 
 element-text {
+    background-color: transparent;
     text-color: inherit;
+    vertical-align: 0.5;
+}
+
+mode-switcher {
+    spacing: 5px;
+    padding: 2px 0 0;
+    background-color: transparent;
+}
+
+button {
+    padding: 5px 10px;
+    border-radius: 8px;
+    background-color: transparent;
+    text-color: @on-surface-variant;
+}
+
+button selected {
+    background-color: @primary;
+    text-color: @on-primary;
+}
+
+message,
+textbox,
+error-message {
+    background-color: transparent;
+    text-color: @on-surface;
 }
