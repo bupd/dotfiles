@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+input="${1:-}"
+input="${input#= }"
+
+calculate() {
+    python3 - "$1" <<'PY'
+import ast
+import math
+import operator
+import sys
+
+expr = sys.argv[1].strip()
+allowed_names = {
+    name: getattr(math, name)
+    for name in dir(math)
+    if not name.startswith("_")
+}
+allowed_names.update({"pi": math.pi, "e": math.e})
+operators = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+    ast.FloorDiv: operator.floordiv,
+    ast.Mod: operator.mod,
+    ast.Pow: operator.pow,
+    ast.USub: operator.neg,
+    ast.UAdd: operator.pos,
+}
+
+def eval_node(node):
+    if isinstance(node, ast.Expression):
+        return eval_node(node.body)
+    if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
+        return node.value
+    if isinstance(node, ast.BinOp) and type(node.op) in operators:
+        return operators[type(node.op)](eval_node(node.left), eval_node(node.right))
+    if isinstance(node, ast.UnaryOp) and type(node.op) in operators:
+        return operators[type(node.op)](eval_node(node.operand))
+    if isinstance(node, ast.Name) and node.id in allowed_names:
+        return allowed_names[node.id]
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in allowed_names:
+        return allowed_names[node.func.id](*[eval_node(arg) for arg in node.args])
+    raise ValueError("unsupported expression")
+
+try:
+    result = eval_node(ast.parse(expr, mode="eval"))
+except Exception:
+    sys.exit(1)
+
+if isinstance(result, float) and result.is_integer():
+    result = int(result)
+print(result)
+PY
+}
+
+if [[ -n "$input" ]]; then
+    if result="$(calculate "$input" 2>/dev/null)"; then
+        if [[ "${ROFI_RETV:-0}" == "1" ]]; then
+            printf '%s' "$result" | wl-copy 2>/dev/null || true
+            exit 0
+        fi
+        printf '= %s = %s\0icon\x1faccessories-calculator\n' "$input" "$result"
+    else
+        printf '= %s\0icon\x1faccessories-calculator\n' "$input"
+    fi
+else
+    printf 'Type math, e.g. 2*(3+4), sqrt(144), sin(pi/2)\0nonselectable\x1ftrue\n'
+fi

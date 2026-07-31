@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+open_in_chromium() {
+    local query="$1"
+    local target
+
+    if [[ "$query" =~ ^https?:// ]]; then
+        target="$query"
+    elif [[ "$query" =~ ^[[:alnum:]][[:alnum:].-]+\.[[:alpha:]]{2,}(/.*)?$ ]]; then
+        target="https://$query"
+    else
+        target="https://www.google.com/search?q=$(urlencode "$query")"
+    fi
+
+    nohup chromium "$target" >/dev/null 2>&1 &
+}
+
+urlencode() {
+    local string="$1"
+    local encoded=""
+    local pos char hex
+
+    for ((pos = 0; pos < ${#string}; pos++)); do
+        char="${string:pos:1}"
+        case "$char" in
+            [a-zA-Z0-9.~_-]) encoded+="$char" ;;
+            " ") encoded+="+" ;;
+            *) printf -v hex '%%%02X' "'$char"; encoded+="$hex" ;;
+        esac
+    done
+
+    printf '%s' "$encoded"
+}
+
+input="${1:-}"
+input="${input#Web Search: }"
+
+if [[ "${ROFI_RETV:-0}" == "1" && -n "$input" ]]; then
+    open_in_chromium "$input"
+    exit 0
+fi
+
+if [[ -n "$input" ]]; then
+    printf 'Web Search: %s\0icon\x1fchromium\n' "$input"
+else
+    printf 'Type a web search or URL\0icon\x1fchromium\n'
+fi

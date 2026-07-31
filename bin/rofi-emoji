@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+selection="${1:-}"
+
+if [[ "${ROFI_RETV:-0}" == "1" && -n "$selection" ]]; then
+    emoji="${selection%% *}"
+    printf '%s' "$emoji" | wl-copy 2>/dev/null || true
+    exit 0
+fi
+
+cat <<'EOF'
+😀 grinning face
+😂 joy laugh
+🤣 rolling laugh
+😊 smile happy
+😍 heart eyes
+😘 kiss
+😎 sunglasses cool
+🥲 smiling tear
+😭 crying
+😤 frustrated
+😡 angry
+🤔 thinking
+🫡 salute
+🙏 pray thanks
+👍 thumbs up
+👎 thumbs down
+👏 clap
+🔥 fire
+✨ sparkle
+⭐ star
+❤️ heart
+💙 blue heart
+✅ check
+❌ cross
+⚠️ warning
+🚀 rocket
+💡 idea
+📌 pin
+📎 clip
+📝 memo
+🔍 search
+🔒 lock
+🔓 unlock
+🛠️ tools
+⚙️ settings
+💻 laptop
+🖥️ desktop
+⌨️ keyboard
+🧠 brain
+☕ coffee
+🍕 pizza
+🎧 headphones
+🎮 game
+📚 books
+EOF

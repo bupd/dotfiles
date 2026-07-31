@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+input="${1:-}"
+desktop_dirs=("$HOME/.local/share/applications" "/usr/local/share/applications" "/usr/share/applications")
+
+urlencode() {
+    local string="$1"
+    local encoded=""
+    local pos char hex
+
+    for ((pos = 0; pos < ${#string}; pos++)); do
+        char="${string:pos:1}"
+        case "$char" in
+            [a-zA-Z0-9.~_-]) encoded+="$char" ;;
+            " ") encoded+="+" ;;
+            *) printf -v hex '%%%02X' "'$char"; encoded+="$hex" ;;
+        esac
+    done
+
+    printf '%s' "$encoded"
+}
+
+open_web() {
+    local query="$1"
+    local target
+
+    if [[ "$query" =~ ^https?:// ]]; then
+        target="$query"
+    elif [[ "$query" =~ ^[[:alnum:]][[:alnum:].-]+\.[[:alpha:]]{2,}(/.*)?$ ]]; then
+        target="https://$query"
+    else
+        target="https://www.google.com/search?q=$(urlencode "$query")"
+    fi
+
+    nohup chromium "$target" >/dev/null 2>&1 &
+}
+
+desktop_entries() {
+    local dir file
+
+    for dir in "${desktop_dirs[@]}"; do
+        [[ -d "$dir" ]] || continue
+        while IFS= read -r -d '' file; do
+            awk -v file="$file" '
+                BEGIN { section = ""; type = ""; name = ""; icon = ""; hidden = "false"; nodisplay = "false" }
+                /^\[/ { section = $0; next }
+                section != "[Desktop Entry]" { next }
+                /^Type=/ { type = substr($0, 6); next }
+                /^Name=/ && name == "" { name = substr($0, 6); next }
+                /^Icon=/ && icon == "" { icon = substr($0, 6); next }
+                /^Hidden=/ { hidden = tolower(substr($0, 8)); next }
+                /^NoDisplay=/ { nodisplay = tolower(substr($0, 11)); next }
+                END {
+                    if (type == "Application" && name != "" && hidden != "true" && nodisplay != "true") {
+                        id = file
+                        sub(".*/", "", id)
+                        sub(/\.desktop$/, "", id)
+                        printf "%s\t%s\t%s\n", name, id, icon
+                    }
+                }
+            ' "$file"
+        done < <(find "$dir" -maxdepth 1 -type f -name '*.desktop' -print0)
+    done | sort -fu
+}
+
+launch_app() {
+    local selected="$1"
+    local entry app_id
+
+    entry="$(desktop_entries | awk -F '\t' -v selected="$selected" '$1 == selected { print; exit }')"
+    [[ -n "$entry" ]] || exit 0
+    app_id="$(printf '%s' "$entry" | awk -F '\t' '{ print $2 }')"
+    gtk-launch "$app_id" >/dev/null 2>&1 &
+}
+
+if [[ "${ROFI_RETV:-0}" == "2" && -n "$input" ]]; then
+    open_web "$input"
+    exit 0
+fi
+
+if [[ "${ROFI_RETV:-0}" == "1" && -n "$input" ]]; then
+    if [[ "$input" == "Search Web: "* ]]; then
+        open_web "${input#Search Web: }"
+    elif [[ "$input" == "Press Enter to search the web" ]]; then
+        exit 0
+    else
+        launch_app "$input"
+    fi
+    exit 0
+fi
+
+printf 'Press Enter to search the web\0icon\x1fchromium\x1fpermanent\x1ftrue\x1fnonselectable\x1ftrue\n'
+
+query="$(printf '%s' "$input" | tr '[:upper:]' '[:lower:]')"
+desktop_entries |
+    awk -F '\t' -v query="$query" '
+        BEGIN { count = 0 }
+        {
+            lowered = tolower($1)
+            if (query == "" || index(lowered, query) > 0) {
+                icon = $3
+                if (icon == "") icon = "application-x-executable"
+                printf "%s\0icon\37%s\n", $1, icon
+                count++
+                if (count >= 12) exit
+            }
+        }
+    '

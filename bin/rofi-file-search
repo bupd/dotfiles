@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+root="${ROFI_FILE_ROOT:-$HOME}"
+selection="${1:-}"
+
+if [[ "${ROFI_RETV:-0}" == "1" && -n "$selection" ]]; then
+    path="${selection#*/}"
+    [[ "$selection" == /* ]] && path="$selection"
+    if [[ -e "$path" ]]; then
+        nohup xdg-open "$path" >/dev/null 2>&1 &
+    fi
+    exit 0
+fi
+
+if command -v fd >/dev/null 2>&1; then
+    fd . "$root" --hidden --follow --exclude .git --exclude node_modules --exclude .cache --max-results 500 |
+        sed "s#^$HOME/#~/#" |
+        while IFS= read -r path; do
+            real="${path/#\~/$HOME}"
+            if [[ -d "$real" ]]; then
+                printf '%s\0icon\x1ffolder\n' "$path"
+            else
+                printf '%s\0icon\x1ftext-x-generic\n' "$path"
+            fi
+        done
+else
+    find "$root" \( -path '*/.git' -o -path '*/node_modules' -o -path '*/.cache' \) -prune -o -print |
+        sed -n '1,500p' |
+        sed "s#^$HOME/#~/#"
+fi

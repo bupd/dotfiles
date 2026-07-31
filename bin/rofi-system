@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+selection="${1:-}"
+
+run_action() {
+    case "$1" in
+        "Lock") loginctl lock-session ;;
+        "Logout") loginctl terminate-session "${XDG_SESSION_ID:-self}" ;;
+        "Power Menu") wlogout ;;
+        "Reload Rice") "$HOME/dotfiles/bin/reload-rice" ;;
+        "Wallpaper") "$HOME/dotfiles/bin/awww-wallpaper-picker" ;;
+        "Mute Audio") pactl set-sink-mute @DEFAULT_SINK@ toggle ;;
+        "Mute Mic") pactl set-source-mute @DEFAULT_SOURCE@ toggle ;;
+        "Suspend") systemctl suspend ;;
+        "Reboot") systemctl reboot ;;
+        "Shutdown") systemctl poweroff ;;
+    esac
+}
+
+if [[ "${ROFI_RETV:-0}" == "1" && -n "$selection" ]]; then
+    run_action "${selection#* }"
+    exit 0
+fi
+
+cat <<'EOF'
+ Lock
+󰍃 Logout
+⏻ Power Menu
+󰑓 Reload Rice
+ Wallpaper
+󰖁 Mute Audio
+ Mute Mic
+󰤄 Suspend
+󰜉 Reboot
+󰐥 Shutdown
+EOF

@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+selection="${1:-}"
+
+if [[ "${ROFI_RETV:-0}" == "1" && -n "$selection" ]]; then
+    if ! command -v cliphist >/dev/null 2>&1 || ! command -v wl-copy >/dev/null 2>&1; then
+        printf 'Install cliphist and wl-clipboard\0nonselectable\x1ftrue\n'
+        exit 0
+    fi
+
+    printf '%s' "$selection" | cliphist decode | wl-copy
+    exit 0
+fi
+
+if command -v cliphist >/dev/null 2>&1; then
+    cliphist list
+else
+    printf 'Install cliphist and wl-clipboard\0nonselectable\x1ftrue\n'
+fi
