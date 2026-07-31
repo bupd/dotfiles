@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+hyprctl reload
+
+if systemctl --user list-unit-files app-com.mitchellh.ghostty.service >/dev/null 2>&1; then
+    systemctl reload --user app-com.mitchellh.ghostty.service 2>/dev/null || true
+else
+    pkill -SIGUSR2 -x ghostty 2>/dev/null || true
+fi
+
+pkill -x waybar 2>/dev/null || true
+sleep 0.2
+waybar >/tmp/waybar.log 2>&1 &

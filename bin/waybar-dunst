@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if ! command -v dunstctl >/dev/null 2>&1; then
+    printf '{"text":"󰂚","tooltip":"Dunst is not installed","class":"missing"}\n'
+    exit 0
+fi
+
+paused="$(dunstctl is-paused)"
+waiting="$(dunstctl count waiting 2>/dev/null || printf '0')"
+displayed="$(dunstctl count displayed 2>/dev/null || printf '0')"
+history="$(dunstctl count history 2>/dev/null || printf '0')"
+
+if [[ "$paused" == "true" ]]; then
+    icon=""
+    class="paused"
+elif (( waiting > 0 )); then
+    icon=""
+    class="waiting"
+else
+    icon=""
+    class="clear"
+fi
+
+text="$icon"
+if (( waiting > 0 )); then
+    text+=" $waiting"
+fi
+
+printf '{"text":"%s","tooltip":"Displayed: %s\\nWaiting: %s\\nHistory: %s\\nRight click toggles pause","class":"%s"}\n' \
+    "$text" "$displayed" "$waiting" "$history" "$class"

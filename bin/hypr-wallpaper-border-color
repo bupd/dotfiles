@@ -1,0 +1,152 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+wallpaper="${1:-${HOME}/.config/hypr/current_wallpaper}"
+fallback="${HOME}/dotfiles/wallpapers/arch-hyprland/0anime.jpg"
+
+if [[ -L "$wallpaper" || -f "$wallpaper" ]]; then
+    wallpaper="$(readlink -f "$wallpaper")"
+elif [[ -f "$fallback" ]]; then
+    wallpaper="$fallback"
+else
+    exit 0
+fi
+
+if ! command -v magick >/dev/null 2>&1; then
+    notify-send "Hyprland" "Install imagemagick to derive border colors from wallpaper" 2>/dev/null || true
+    exit 0
+fi
+
+hex="$(
+    magick "${wallpaper}[0]" \
+        -resize 64x64! \
+        -modulate 115,135,100 \
+        -colors 8 \
+        -depth 8 \
+        -format '%c' histogram:info:- |
+        sort -nr |
+        sed -n 's/.*#\([0-9A-Fa-f]\{6\}\).*/\1/p' |
+        head -n 1
+)"
+
+[[ -n "$hex" ]] || exit 0
+
+accent="$(
+    magick xc:"#${hex}" \
+        -modulate 150,155,100 \
+        -colorspace sRGB \
+        -depth 8 \
+        -format '#%[pixel:p{0,0}]' info: |
+        sed -n 's/.*#\([0-9A-Fa-f]\{6\}\).*/\1/p'
+)"
+[[ -n "$accent" ]] || accent="$hex"
+
+r=$((16#${accent:0:2}))
+g=$((16#${accent:2:2}))
+b=$((16#${accent:4:2}))
+dark="$(
+    magick xc:"#${hex}" \
+        -modulate 45,90,100 \
+        -colorspace sRGB \
+        -depth 8 \
+        -format '#%[pixel:p{0,0}]' info: |
+        sed -n 's/.*#\([0-9A-Fa-f]\{6\}\).*/\1/p'
+)"
+[[ -n "$dark" ]] || dark="0e1415"
+
+surface="$(
+    magick xc:"#${dark}" \
+        -modulate 120,95,100 \
+        -colorspace sRGB \
+        -depth 8 \
+        -format '#%[pixel:p{0,0}]' info: |
+        sed -n 's/.*#\([0-9A-Fa-f]\{6\}\).*/\1/p'
+)"
+[[ -n "$surface" ]] || surface="1a2121"
+
+muted="$(
+    magick xc:"#${accent}" \
+        -modulate 135,45,100 \
+        -colorspace sRGB \
+        -depth 8 \
+        -format '#%[pixel:p{0,0}]' info: |
+        sed -n 's/.*#\([0-9A-Fa-f]\{6\}\).*/\1/p'
+)"
+[[ -n "$muted" ]] || muted="$accent"
+
+mkdir -p "$HOME/.config/waybar"
+cat >"$HOME/.config/waybar/wallpaper-colors.css" <<EOF
+@define-color wallpaper_accent #${accent};
+@define-color wallpaper_accent_soft rgba(${r}, ${g}, ${b}, 0.22);
+EOF
+
+mkdir -p "$HOME/.config/rofi"
+cat >"$HOME/.config/rofi/colors.rasi" <<EOF
+* {
+    primary: #${accent};
+    primary-fixed: #${accent};
+    primary-fixed-dim: #${muted};
+    on-primary: #121318;
+    on-primary-fixed: #${dark};
+    on-primary-fixed-variant: #${surface};
+    primary-container: #${surface};
+    on-primary-container: #${accent};
+    secondary: #${muted};
+    secondary-fixed: #${muted};
+    secondary-fixed-dim: #${muted};
+    on-secondary: #121318;
+    on-secondary-fixed: #${dark};
+    on-secondary-fixed-variant: #${surface};
+    secondary-container: #${surface};
+    on-secondary-container: #eef2f8;
+    tertiary: #${accent};
+    tertiary-fixed: #${accent};
+    tertiary-fixed-dim: #${muted};
+    on-tertiary: #121318;
+    on-tertiary-fixed: #${dark};
+    on-tertiary-fixed-variant: #${surface};
+    tertiary-container: #${surface};
+    on-tertiary-container: #eef2f8;
+    error: #ffb4ab;
+    on-error: #690005;
+    error-container: #93000a;
+    on-error-container: #ffdad6;
+    surface: #${dark};
+    on-surface: #eef2f8;
+    on-surface-variant: #c5c6d0;
+    outline: #8f9099;
+    outline-variant: #44464f;
+    shadow: #000000;
+    scrim: #000000;
+    inverse-surface: #eef2f8;
+    inverse-on-surface: #121318;
+    inverse-primary: #${accent};
+    surface-dim: #${dark};
+    surface-bright: #${surface};
+    surface-container-lowest: #090f10;
+    surface-container-low: #${dark};
+    surface-container: #${surface};
+    surface-container-high: #${surface};
+    surface-container-highest: #${surface};
+}
+EOF
+
+mkdir -p "$HOME/.config/tmux"
+cat >"$HOME/.config/tmux/wallpaper-theme.conf" <<EOF
+set -g status-style "bg=#${dark},fg=#eef2f8"
+set -g status-left-style "bg=#${dark},fg=#eef2f8"
+set -g status-right-style "bg=#${dark},fg=#eef2f8"
+set -g window-status-style "bg=#${dark},fg=#c5c6d0"
+set -g window-status-current-style "bg=#${accent},fg=#121318,bold"
+set -g pane-border-style "fg=#${surface}"
+set -g pane-active-border-style "fg=#${accent}"
+set -g message-style "bg=#${accent},fg=#121318"
+set -g message-command-style "bg=#${dark},fg=#${accent}"
+set -g display-panes-colour "#${surface}"
+set -g display-panes-active-colour "#${accent}"
+EOF
+
+hyprctl eval "hl.config({ general = { col = { active_border = { colors = { 'rgba(${hex}ff)', 'rgba(${hex}cc)' }, angle = 45 } } } })" >/dev/null
+
+pkill -SIGUSR2 waybar 2>/dev/null || true
+tmux source-file "$HOME/.config/tmux/wallpaper-theme.conf" 2>/dev/null || true

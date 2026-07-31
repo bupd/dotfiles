@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+wallpaper_dir="${WALLPAPER_DIR:-$HOME/dotfiles/wallpapers/arch-hyprland}"
+
+if ! command -v awww >/dev/null 2>&1; then
+    notify-send "Wallpaper" "awww is not installed" 2>/dev/null || true
+    exit 1
+fi
+
+if ! pgrep -x awww-daemon >/dev/null 2>&1; then
+    awww-daemon >/dev/null 2>&1 &
+    sleep 0.5
+fi
+
+selected="$(
+    while IFS= read -r -d '' wallpaper; do
+        name="${wallpaper##*/}"
+        printf '%s\0icon\x1f%s\n' "$name" "$wallpaper"
+    done < <(
+        find "$wallpaper_dir" -maxdepth 1 -type f \
+            \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.gif' -o -iname '*.webp' \) \
+            -print0 |
+            sort -z
+    ) |
+        rofi -dmenu \
+            -show-icons \
+            -p "Wallpaper" \
+            -theme-str 'listview { columns: 2; lines: 5; }' \
+            -theme-str 'element { orientation: vertical; padding: 8px; }' \
+            -theme-str 'element-icon { size: 160px; }' \
+            -theme-str 'element-text { horizontal-align: 0.5; }'
+)"
+
+[[ -n "$selected" ]] || exit 0
+
+wallpaper="$wallpaper_dir/$selected"
+awww img --transition-type any --transition-duration 0.8 --transition-fps 60 "$wallpaper"
+ln -sfn "$wallpaper" "$HOME/.config/hypr/current_wallpaper"
+"$HOME/dotfiles/bin/hypr-wallpaper-border-color" "$wallpaper"
