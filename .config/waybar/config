@@ -79,7 +79,8 @@
   "clock": {
     "interval": 60,
     "format": "󰥔 {:%a %d %b  %I:%M %p}",
-    "tooltip-format": "{:%A, %d %B %Y\n%Z}"
+    "tooltip-format": "{:%A, %d %B %Y\n%Z}",
+    "on-click": "chromium --profile-directory=Default https://calendar.google.com/calendar/u/0/r"
   },
 
   "pulseaudio": {
