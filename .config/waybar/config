@@ -1,0 +1,197 @@
+{
+  "layer": "top",
+  "position": "top",
+  "height": 34,
+  "spacing": 10,
+  "margin-top": 8,
+  "margin-left": 12,
+  "margin-right": 12,
+  "fixed-center": true,
+
+  "modules-left": [
+    "hyprland/workspaces",
+    "hyprland/window"
+  ],
+  "modules-center": [
+    "clock"
+  ],
+  "modules-right": [
+    "pulseaudio",
+    "pulseaudio#microphone",
+    "network",
+    "network#speed",
+    "bluetooth",
+    "backlight",
+    "battery",
+    "cpu",
+    "memory",
+    "custom/hyprwhspr",
+    "tray",
+    "custom/power"
+  ],
+
+  "hyprland/workspaces": {
+    "all-outputs": true,
+    "format": "{name} {windows}",
+    "format-window-separator": " ",
+    "window-rewrite-default": "",
+    "window-rewrite": {
+      "class<Chromium|chromium>": "",
+      "class<Brave-browser|brave-browser>": "",
+      "class<Google-chrome|google-chrome>": "",
+      "class<firefox|org.mozilla.firefox>": "",
+      "class<com.mitchellh.ghostty|ghostty|Xfce4-terminal|kitty|Alacritty>": "",
+      "class<obsidian|obsidian-wayland>": "󰠮",
+      "class<Slack|slack>": "",
+      "class<discord|Discord|Vesktop>": "",
+      "class<Spotify|spotify>": "",
+      "class<steam_app_.*>": "",
+      "class<steam|Steam>": "",
+      "class<obs|com.obsproject.Studio>": "󰻂",
+      "class<whatsapp-electron>": "",
+      "class<org.gnome.Nautilus|dolphin|thunar>": "",
+      "class<Code|code|codium|VSCodium>": "󰨞"
+    },
+    "format-icons": {
+      "1": "1",
+      "2": "2",
+      "3": "3",
+      "4": "4",
+      "5": "5",
+      "urgent": "!",
+      "active": "{name}",
+      "default": "{name}"
+    },
+    "move-to-monitor": true,
+    "on-scroll-up": "hyprctl dispatch workspace e+1",
+    "on-scroll-down": "hyprctl dispatch workspace e-1",
+    "persistent-workspaces": {
+      "*": 5
+    }
+  },
+
+  "hyprland/window": {
+    "format": "{}",
+    "max-length": 64,
+    "separate-outputs": true
+  },
+
+  "clock": {
+    "interval": 60,
+    "format": "󰥔 {:%a %d %b  %I:%M %p}",
+    "tooltip-format": "{:%A, %d %B %Y\n%Z}"
+  },
+
+  "pulseaudio": {
+    "format": " {volume}%",
+    "format-bluetooth": "󰂰 {volume}%",
+    "format-muted": " muted",
+    "scroll-step": 5,
+    "on-click": "pactl set-sink-mute @DEFAULT_SINK@ toggle",
+    "on-click-right": "pavucontrol -t 3",
+    "on-scroll-up": "pactl set-sink-volume @DEFAULT_SINK@ +5%",
+    "on-scroll-down": "pactl set-sink-volume @DEFAULT_SINK@ -5%",
+    "tooltip-format": "{desc}"
+  },
+
+  "pulseaudio#microphone": {
+    "format": " {format_source}",
+    "format-source": "{volume}%",
+    "format-source-muted": "muted",
+    "scroll-step": 5,
+    "on-click": "pactl set-source-mute @DEFAULT_SOURCE@ toggle",
+    "on-click-right": "pavucontrol -t 4",
+    "on-scroll-up": "pactl set-source-volume @DEFAULT_SOURCE@ +5%",
+    "on-scroll-down": "pactl set-source-volume @DEFAULT_SOURCE@ -5%",
+    "tooltip-format": "{source_desc}"
+  },
+
+  "network": {
+    "format-wifi": "󰤨 {essid}",
+    "format-ethernet": "󰈀 wired",
+    "format-linked": "󰈀 {ifname}",
+    "format-disconnected": "󰤭 offline",
+    "max-length": 28,
+    "on-click-right": "ghostty -e nmtui",
+    "tooltip-format-wifi": "{ifname}: {ipaddr}/{cidr}\nSignal: {signalStrength}%",
+    "tooltip-format-ethernet": "{ifname}: {ipaddr}/{cidr}",
+    "tooltip-format-disconnected": "Network disconnected"
+  },
+
+  "network#speed": {
+    "interval": 1,
+    "format-wifi": "󰕒 {bandwidthUpBytes}  󰇚 {bandwidthDownBytes}",
+    "format-ethernet": "󰕒 {bandwidthUpBytes}  󰇚 {bandwidthDownBytes}",
+    "format-linked": "󰕒 {bandwidthUpBytes}  󰇚 {bandwidthDownBytes}",
+    "format-disconnected": "󰕒 0 B/s  󰇚 0 B/s",
+    "tooltip-format-wifi": "{essid}\nUpload: {bandwidthUpBytes}\nDownload: {bandwidthDownBytes}",
+    "tooltip-format-ethernet": "{ifname}\nUpload: {bandwidthUpBytes}\nDownload: {bandwidthDownBytes}",
+    "tooltip-format-disconnected": "Network disconnected"
+  },
+
+  "bluetooth": {
+    "format": "󰂯 BT",
+    "format-disabled": "󰂲 BT",
+    "format-connected": "󰂱 {num_connections}",
+    "on-click": "ghostty -e bluetui",
+    "tooltip-format": "{controller_alias}",
+    "tooltip-format-connected": "{device_enumerate}",
+    "tooltip-format-enumerate-connected": "{device_alias}: {device_battery_percentage}%"
+  },
+
+  "backlight": {
+    "format": "󰃠 {percent}%",
+    "scroll-step": 5,
+    "on-scroll-up": "brightnessctl set +5%",
+    "on-scroll-down": "brightnessctl set 5%-"
+  },
+
+  "battery": {
+    "states": {
+      "warning": 30,
+      "critical": 15
+    },
+    "format": "󰁹 {capacity}%",
+    "format-charging": "󰂄 {capacity}%",
+    "format-plugged": "󰚥 {capacity}%",
+    "format-full": "󰁹 full",
+    "tooltip-format": "{timeTo} remaining"
+  },
+
+  "cpu": {
+    "interval": 5,
+    "format": "󰍛 {usage}%",
+    "on-click": "ghostty -e btop",
+    "tooltip-format": "CPU usage: {usage}%"
+  },
+
+  "memory": {
+    "interval": 5,
+    "format": "󰾆 {percentage}%",
+    "on-click": "ghostty -e btop",
+    "tooltip-format": "Memory: {used:0.1f}G/{total:0.1f}G"
+  },
+
+  "custom/hyprwhspr": {
+    "format": "{}",
+    "exec": "/usr/lib/hyprwhspr/config/hyprland/hyprwhspr-tray.sh status",
+    "interval": 1,
+    "return-type": "json",
+    "exec-on-event": true,
+    "on-click": "/usr/lib/hyprwhspr/config/hyprland/hyprwhspr-tray.sh record",
+    "on-click-right": "/usr/lib/hyprwhspr/config/hyprland/hyprwhspr-tray.sh restart",
+    "tooltip": true
+  },
+
+  "tray": {
+    "icon-size": 16,
+    "spacing": 8
+  },
+
+  "custom/power": {
+    "format": "⏻",
+    "tooltip": true,
+    "tooltip-format": "Open logout and power menu",
+    "on-click": "wlogout"
+  }
+}

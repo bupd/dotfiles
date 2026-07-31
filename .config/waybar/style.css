@@ -1,0 +1,102 @@
+@import "/usr/lib/hyprwhspr/config/waybar/hyprwhspr-style.css";
+* {
+  border: none;
+  border-radius: 0;
+  font-family: "JetBrainsMono Nerd Font Mono", "JetBrainsMono Nerd Font Propo", monospace;
+  font-size: 13px;
+  font-weight: 700;
+  min-height: 0;
+}
+
+@import "wallpaper-colors.css";
+
+window#waybar {
+  background: transparent;
+  color: #eef2f8;
+}
+
+tooltip {
+  background: rgba(18, 19, 24, 0.96);
+  border: 1px solid rgba(176, 198, 255, 0.35);
+  border-radius: 12px;
+  color: #eef2f8;
+}
+
+.modules-left,
+.modules-center,
+.modules-right {
+  background: rgba(14, 17, 24, 0.72);
+  border: 1px solid rgba(176, 198, 255, 0.20);
+  border-radius: 14px;
+  margin: 0 4px;
+  padding: 4px;
+}
+
+#workspaces,
+#window,
+#clock,
+#pulseaudio,
+#pulseaudio.microphone,
+#network,
+#network.speed,
+#bluetooth,
+#backlight,
+#battery,
+#cpu,
+#memory,
+#custom-hyprwhspr,
+#tray,
+#custom-power {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  margin: 0 3px;
+  padding: 0 10px;
+}
+
+#workspaces {
+  padding: 0 4px;
+}
+
+#workspaces button {
+  color: #c5c6d0;
+  border-radius: 8px;
+  margin: 0 2px;
+  padding: 0 8px;
+}
+
+#workspaces button.active {
+  background: @wallpaper_accent;
+  color: #121318;
+}
+
+#workspaces button.urgent {
+  background: #ffb4ab;
+  color: #121318;
+}
+
+#window {
+  color: #d8dee9;
+  min-width: 0;
+}
+
+#clock {
+  color: #ffffff;
+}
+
+#pulseaudio.muted,
+#network.disconnected,
+#bluetooth.disabled,
+#battery.warning {
+  color: #ebcb8b;
+}
+
+#battery.critical {
+  background: #bf616a;
+  color: #ffffff;
+}
+
+#custom-power {
+  background: @wallpaper_accent_soft;
+  color: #ffffff;
+}
