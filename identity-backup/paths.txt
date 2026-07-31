@@ -22,10 +22,14 @@
 .gitconfig
 .config/git
 .password-store
-.local/share/keyrings
 .netrc
 .authinfo
 .config/gh
 .config/glab
 .aws
 .azure
+
+# Do not restore ~/.local/share/keyrings directly on a new system. The GNOME
+# login keyring is encrypted with the old login password and will break automatic
+# unlock after a password or machine migration. Export/import individual secrets
+# intentionally instead.

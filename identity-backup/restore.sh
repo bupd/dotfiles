@@ -44,7 +44,12 @@ else
 fi
 
 printf 'Restoring into: %s\n' "$target"
-unzip -q "$archive" -d "$target"
+if "$restore_home"; then
+  unzip -q "$archive" -d "$target" -x '.local/share/keyrings/*'
+  printf 'Skipped ~/.local/share/keyrings during direct restore; desktop login keyrings are machine/password-specific.\n'
+else
+  unzip -q "$archive" -d "$target"
+fi
 
 if "$restore_home"; then
   [[ -d "$HOME/.ssh" ]] && chmod 700 "$HOME/.ssh"

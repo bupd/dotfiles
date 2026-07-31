@@ -25,7 +25,9 @@ RESTORE DIRECTLY ON A NEW DEVICE
   ~/identity-backup/restore.sh --home ~/identity-backup/identity-backup-DATE.zip
 
 Direct restoration can overwrite existing files. The script asks you to type
-RESTORE before proceeding.
+RESTORE before proceeding. Direct home restores intentionally skip
+~/.local/share/keyrings so an old login keyring does not break the new system
+password.
 
 GPG SIGNING KEYS
 
@@ -71,8 +73,14 @@ The backup includes ~/.docker, including Docker login configuration, and all of
 ~/.kube, including files named *.kubeconfig.yaml.
 
 Docker credential helpers may store credentials in an OS keyring rather than in
-~/.docker/config.json. This list also includes ~/.local/share/keyrings for common
-Linux desktop keyrings.
+~/.docker/config.json. Do not restore ~/.local/share/keyrings directly onto a
+new Linux desktop. The GNOME login keyring is encrypted with the old login
+password, so restoring it can cause repeated "login keyring" unlock prompts after
+moving to a new system or changing the account password.
+
+If you need old desktop secrets, restore the archive into a staging directory and
+copy/export individual credentials intentionally. Let the new system create its
+own fresh login keyring.
 
 Kubeconfig files can refer to certificates or keys outside ~/.kube. Add those
 external paths to paths.txt if you use them.
