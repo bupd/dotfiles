@@ -1,0 +1,111 @@
+force_keyboard_focus = true
+close_when_open = true
+click_to_close = true
+selection_wrap = true
+disable_mouse = false
+debug = false
+theme = "default"
+exact_search_prefix = "'"
+
+[shell]
+anchor_top = true
+anchor_bottom = true
+anchor_left = true
+anchor_right = true
+
+[placeholders]
+"default" = { input = "Search", list = "No Results" }
+"desktopapplications" = { input = "Launch", list = "No Applications" }
+"websearch" = { input = "Search Web", list = "" }
+"symbols" = { input = "Symbols", list = "No Symbols" }
+"clipboard" = { input = "Clipboard", list = "Clipboard Empty" }
+"calc" = { input = "Calculate", list = "Enter Expression" }
+"files" = { input = "Files", list = "No Files" }
+"runner" = { input = "Run", list = "No Commands" }
+
+[keybinds]
+close = ["Escape"]
+next = ["Down", "ctrl j"]
+previous = ["Up", "ctrl k"]
+toggle_exact = ["ctrl e"]
+resume_last_query = ["ctrl r"]
+quick_activate = ["F1", "F2", "F3", "F4", "F5"]
+
+[providers]
+default = [
+  "desktopapplications",
+  "websearch",
+  "calc",
+  "files",
+  "clipboard",
+]
+empty = ["desktopapplications"]
+max_results = 40
+
+[providers.max_results_provider]
+desktopapplications = 12
+websearch = 5
+files = 12
+clipboard = 8
+calc = 4
+symbols = 12
+
+[[providers.prefixes]]
+prefix = ";"
+provider = "providerlist"
+
+[[providers.prefixes]]
+prefix = ">"
+provider = "runner"
+
+[[providers.prefixes]]
+prefix = "/"
+provider = "files"
+
+[[providers.prefixes]]
+prefix = "."
+provider = "symbols"
+
+[[providers.prefixes]]
+prefix = "="
+provider = "calc"
+
+[[providers.prefixes]]
+prefix = "@"
+provider = "websearch"
+
+[[providers.prefixes]]
+prefix = ":"
+provider = "clipboard"
+
+[providers.clipboard]
+time_format = "%d.%m. %H:%M"
+
+[providers.actions]
+websearch = [
+  { action = "search", default = true, bind = "Return" },
+]
+desktopapplications = [
+  { action = "start", default = true, bind = "Return" },
+  { action = "start:keep", label = "open next", bind = "shift Return", after = "KeepOpen" },
+]
+calc = [
+  { action = "copy", default = true, bind = "Return" },
+]
+symbols = [
+  { action = "run_cmd", label = "select", default = true, bind = "Return" },
+]
+clipboard = [
+  { action = "copy", default = true, bind = "Return" },
+  { action = "remove", bind = "ctrl d", after = "ClearReload" },
+  { action = "remove_all", global = true, label = "clear", bind = "ctrl shift d", after = "ClearReload" },
+]
+files = [
+  { action = "open", default = true, bind = "Return" },
+  { action = "opendir", label = "open dir", bind = "ctrl Return" },
+  { action = "copypath", label = "copy path", bind = "ctrl shift c" },
+]
+runner = [
+  { action = "run", default = true, bind = "Return" },
+  { action = "runterminal", label = "run in terminal", bind = "shift Return" },
+]
