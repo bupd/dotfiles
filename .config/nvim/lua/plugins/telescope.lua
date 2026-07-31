@@ -130,6 +130,12 @@ return {
       telescope.load_extension("live_grep_args")
       telescope.load_extension("ui-select")
       telescope.load_extension("recent_files")
+      local project_utils = require("telescope._extensions.project.utils")
+      local project_state_dir = vim.fn.stdpath("state") .. "/telescope-project"
+      vim.fn.mkdir(project_state_dir, "p")
+      project_utils.telescope_projects_file = project_state_dir .. "/projects.txt"
+      project_utils.telescope_workspaces_file = project_state_dir .. "/workspaces.txt"
+      project_utils.init_files()
       telescope.load_extension("project")
       telescope.load_extension("yank_history")
     end,
