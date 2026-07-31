@@ -1,6 +1,76 @@
 [global]
-icon_position = off
-show_indicators = yes
-mouse_left_click = do_action, close_current
-mouse_middle_click = close_current
-mouse_right_click = close_all
+    monitor = 0
+    follow = mouse
+    width = (320, 420)
+    height = 300
+    origin = top-right
+    offset = 12x42
+    scale = 0
+    notification_limit = 5
+
+    progress_bar = true
+    progress_bar_height = 6
+    progress_bar_frame_width = 0
+    progress_bar_min_width = 160
+    progress_bar_max_width = 360
+
+    indicate_hidden = yes
+    transparency = 5
+    separator_height = 2
+    padding = 12
+    horizontal_padding = 14
+    text_icon_padding = 10
+    frame_width = 2
+    frame_color = "#404659"
+    separator_color = frame
+    corner_radius = 12
+
+    sort = yes
+    idle_threshold = 120
+    font = JetBrainsMono Nerd Font 10
+    line_height = 0
+    markup = full
+    format = "<b>%s</b>\n%b"
+    alignment = left
+    vertical_alignment = center
+    show_age_threshold = 60
+    ellipsize = middle
+    ignore_newline = no
+    stack_duplicates = true
+    hide_duplicate_count = false
+    show_indicators = yes
+
+    icon_position = left
+    min_icon_size = 32
+    max_icon_size = 48
+    icon_path = /usr/share/icons/Papirus-Dark/16x16/status:/usr/share/icons/Papirus-Dark/24x24/status:/usr/share/icons/Papirus-Dark/32x32/status:/usr/share/icons/Papirus-Dark/48x48/status:/usr/share/icons/Papirus/48x48/apps:/usr/share/icons/hicolor/48x48/apps
+
+    sticky_history = yes
+    history_length = 50
+    dmenu = rofi -dmenu -p dunst
+    browser = chromium
+    always_run_script = true
+    title = Dunst
+    class = Dunst
+
+    mouse_left_click = do_action, close_current
+    mouse_middle_click = close_current
+    mouse_right_click = close_all
+
+[urgency_low]
+    background = "#121318ee"
+    foreground = "#c5c6d0"
+    frame_color = "#404659"
+    timeout = 4
+
+[urgency_normal]
+    background = "#1e1f25ee"
+    foreground = "#e2e2e9"
+    frame_color = "#b0c6ff"
+    timeout = 6
+
+[urgency_critical]
+    background = "#2f1518ee"
+    foreground = "#ffdad6"
+    frame_color = "#ffb4ab"
+    timeout = 0
