@@ -1,44 +1,39 @@
-# Bluefin GNOME profile for Ghostty
-# To override the theme, add `theme = <name>` to your config.
-# Run `ghostty +list-themes` to see all available themes.
-theme = Catppuccin Mocha
-
-# Run as a single GTK instance, consistent with GNOME app conventions
+adjust-cell-height = 10%
+background-opacity = 0.88
+background-blur = true
+bold-is-bright = false
+confirm-close-surface = false
+cursor-style = bar
+font-family = JetBrainsMono Nerd Font Mono
+font-size = 10
 gtk-single-instance = true
-
-# Show current working directory in the window subtitle
-window-subtitle = working-directory
-
-# Extend the terminal background color into the window padding for a seamless look
-window-padding-color = extend
-window-padding-balance = true
-
-# use zsh instead of bash
-# command = /usr/bin/zsh --login
-command = /usr/bin/zsh -l -i
-
-## configure font size keybind
-keybind = ctrl+shift+equal=increase_font_size:1.5
-
-# Disable the resize overlay — GNOME apps don't show these
-resize-overlay = never
-
-# F11 is the GNOME standard for fullscreen (overrides Ghostty's Ctrl+Enter default)
-keybind = f11=toggle_fullscreen
-
-# Hide the mouse pointer while typing, matching GNOME Terminal and Ptyxis behavior
 mouse-hide-while-typing = true
+quick-terminal-position = center
+selection-background = #2d3f76
+selection-foreground = #c8d3f5
+shell-integration = detect
+shell-integration-features = cursor,sudo
+term = xterm-256color
+title = GhosTTY
+unfocused-split-opacity = 0.5
+wait-after-command = false
+window-height = 32
+window-save-state = always
+window-theme = dark
+window-decoration = false
+window-width = 110
 
-# Send a desktop notification when a command finishes in an unfocused window —
-# useful for long distrobox builds
+command = /usr/bin/zsh -l -i
+keybind = ctrl+shift+equal=increase_font_size:1.5
+keybind = f11=toggle_fullscreen
 notify-on-command-finish = unfocused
 notify-on-command-finish-action = no-bell,notify
-
-# More comfortable padding — default of 2pt is very tight
+resize-overlay = never
+window-padding-color = extend
+window-padding-balance = true
 window-padding-x = 8
 window-padding-y = 4
+window-subtitle = working-directory
 
-# Modern default window size — ensures the MOTD renders at the correct width
-# on first open instead of the legacy 80x24 default
-window-width = 132
-window-height = 36
+config-file = ?~/.config/ghostty/theme.conf
+config-file = ?~/.config/ghostty/wallust.conf
