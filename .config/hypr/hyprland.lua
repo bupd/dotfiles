@@ -256,3 +256,6 @@ hl.window_rule({
     match = { class = "^(obsidian|obsidian-wayland)$" },
     opacity = "0.88 override 0.82 override 1.0 override",
 })
+
+-- HyprMod managed settings
+require("hyprland-gui")
