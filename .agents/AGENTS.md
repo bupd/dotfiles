@@ -8,7 +8,7 @@ When creating commits with DCO sign-off (`git commit -s`), always use:
 Signed-off-by: Prasanth Baskar <prasanth@8gears.com>
 ```
 
-Never hardcode or guess the sign-off email. Always use `prasanth@8geears.com`.
+Never hardcode or guess the sign-off email. Always use `prasanth@8gears.com`.
 
 ## Harbor Worktree Push Rules
 
