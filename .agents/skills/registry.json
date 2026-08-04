@@ -26,13 +26,18 @@
         "angular-ssr",
         "angular-testing",
         "angular-tooling",
+        "bencium-controlled-ux-designer",
+        "bencium-impact-designer",
+        "bencium-innovative-ux-designer",
         "caveman",
         "code-simplifier",
         "dagger-like-website",
+        "design-audit",
         "diagnose",
         "doc-coauthoring",
         "edit-article",
         "find-skills",
+        "frontend-design",
         "github-actions-taskfile",
         "git-worktree-management",
         "go-idiomatic",
@@ -43,6 +48,7 @@
         "neovim-pr-review",
         "obsidian-vault",
         "prototype",
+        "relationship-design",
         "remotion-best-practices",
         "setup-matt-pocock-skills",
         "skill-creator",
@@ -53,6 +59,7 @@
         "to-issues",
         "to-prd",
         "triage",
+        "typography",
         "write-a-skill",
         "zoom-out"
       ]
@@ -77,6 +84,18 @@
         "zoom-out",
         "prototype"
       ]
+    },
+    {
+      "name": "bencium/bencium-marketplace",
+      "url": "https://github.com/bencium/bencium-marketplace",
+      "installed_skills": [
+        "design-audit",
+        "bencium-impact-designer",
+        "bencium-innovative-ux-designer",
+        "bencium-controlled-ux-designer",
+        "relationship-design",
+        "typography"
+      ]
     }
   ],
   "skills": [
@@ -90,13 +109,18 @@
     { "name": "angular-ssr", "path": "~/.agents/skills/angular-ssr/SKILL.md" },
     { "name": "angular-testing", "path": "~/.agents/skills/angular-testing/SKILL.md" },
     { "name": "angular-tooling", "path": "~/.agents/skills/angular-tooling/SKILL.md" },
+    { "name": "bencium-controlled-ux-designer", "path": "~/.agents/skills/bencium-controlled-ux-designer/SKILL.md" },
+    { "name": "bencium-impact-designer", "path": "~/.agents/skills/bencium-impact-designer/SKILL.md" },
+    { "name": "bencium-innovative-ux-designer", "path": "~/.agents/skills/bencium-innovative-ux-designer/SKILL.md" },
     { "name": "caveman", "path": "~/.agents/skills/caveman/SKILL.md" },
     { "name": "code-simplifier", "path": "~/.agents/skills/code-simplifier/SKILL.md" },
     { "name": "dagger-like-website", "path": "~/.agents/skills/dagger-like-website/SKILL.md" },
+    { "name": "design-audit", "path": "~/.agents/skills/design-audit/SKILL.md" },
     { "name": "diagnose", "path": "~/.agents/skills/diagnose/SKILL.md" },
     { "name": "doc-coauthoring", "path": "~/.agents/skills/doc-coauthoring/SKILL.md" },
     { "name": "edit-article", "path": "~/.agents/skills/edit-article/SKILL.md" },
     { "name": "find-skills", "path": "~/.agents/skills/find-skills/SKILL.md" },
+    { "name": "frontend-design", "path": "~/.agents/skills/frontend-design/SKILL.md" },
     { "name": "github-actions-taskfile", "path": "~/.agents/skills/github-actions-taskfile/SKILL.md" },
     { "name": "git-worktree-management", "path": "~/.agents/skills/git-worktree-management/SKILL.md" },
     { "name": "go-idiomatic", "path": "~/.agents/skills/go/SKILL.md" },
@@ -107,6 +131,7 @@
     { "name": "neovim-pr-review", "path": "~/.agents/skills/neovim-pr-review/SKILL.md" },
     { "name": "obsidian-vault", "path": "~/.agents/skills/obsidian-vault/SKILL.md" },
     { "name": "prototype", "path": "~/.agents/skills/prototype/SKILL.md" },
+    { "name": "Agentic UX Design - Relationship-Centric Interfaces", "path": "~/.agents/skills/relationship-design/SKILL.md" },
     { "name": "remotion-best-practices", "path": "~/.agents/skills/remotion-best-practices/SKILL.md" },
     { "name": "setup-matt-pocock-skills", "path": "~/.agents/skills/setup-matt-pocock-skills/SKILL.md" },
     { "name": "skill-creator", "path": "~/.agents/skills/skill-creator/SKILL.md" },
@@ -117,6 +142,7 @@
     { "name": "to-issues", "path": "~/.agents/skills/to-issues/SKILL.md" },
     { "name": "to-prd", "path": "~/.agents/skills/to-prd/SKILL.md" },
     { "name": "triage", "path": "~/.agents/skills/triage/SKILL.md" },
+    { "name": "ui-typography", "path": "~/.agents/skills/typography/SKILL.md" },
     { "name": "write-a-skill", "path": "~/.agents/skills/write-a-skill/SKILL.md" },
     { "name": "zoom-out", "path": "~/.agents/skills/zoom-out/SKILL.md" }
   ]
