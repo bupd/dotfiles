@@ -12,7 +12,8 @@ dotfiles/
 │   ├── git-signoff.md                # DCO sign-off identity
 │   └── skills/                       # Shared skill source of truth
 ├── .claude/
-│   └── CLAUDE.md → ../.agents/AGENTS.md  # Symlink to canonical file
+│   ├── CLAUDE.md → ../.agents/AGENTS.md  # Symlink to canonical file
+│   └── skills/ → ../.agents/skills/*     # Symlinks for Claude Code skill discovery
 └── .codex/
     ├── AGENTS.md → ../.agents/AGENTS.md  # Symlink to canonical file
     └── skills/ → ../.agents/skills/*     # Symlinks for Codex skill discovery
@@ -73,6 +74,7 @@ Every shared skill must have:
 
 - `~/.agents/skills/<skill-name>/SKILL.md`
 - A matching entry in `~/.agents/skills/registry.json`
+- A symlink in `~/.claude/skills/<skill-name>`
 - A symlink in `~/.codex/skills/<skill-name>`
 - A symlink in `~/.opencode/skills/<skill-name>`
 
