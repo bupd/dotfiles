@@ -19,7 +19,6 @@
     "pulseaudio",
     "pulseaudio#microphone",
     "network",
-    "network#speed",
     "bluetooth",
     "backlight",
     "battery",
@@ -113,10 +112,10 @@
     "format-linked": "󰈀 {ifname}",
     "format-disconnected": "󰤭 offline",
     "max-length": 28,
-    "on-click-right": "ghostty -e nmtui",
+    "on-click": "/var/home/bupd/.local/bin/open-network-menu",
     "tooltip-format-wifi": "{ifname}: {ipaddr}/{cidr}\nSignal: {signalStrength}%",
     "tooltip-format-ethernet": "{ifname}: {ipaddr}/{cidr}",
-    "tooltip-format-disconnected": "Network disconnected"
+    "tooltip-format-disconnected": "Network disconnected\nClick to open Wi-Fi settings"
   },
 
   "network#speed": {
