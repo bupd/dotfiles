@@ -3,3 +3,6 @@
 [user]
 name = "Prasanth Baskar"
 email = "prasanth@8gears.com"
+
+[aliases]
+pr = ["util", "exec", "--", "jj-pr"]

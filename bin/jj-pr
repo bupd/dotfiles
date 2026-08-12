@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+# jj-pr — gh-pr-checkout-like workflow for jj (invoked as `jj pr ...` via the
+# `pr` alias in jj config, which routes through `jj util exec`).
+#
+# Usage:
+#   jj pr checkout <pr-number> [remote-name]   # remote required if >1 git remote configured
+#   jj pr checkout <pr-url>                    # unambiguous; remote inferred from the URL's repo
+#
+# Fetches the PR's branch into the matching jj/git remote and creates a new
+# working-copy commit on top of it (jj new), mirroring `gh pr checkout` but
+# without touching git HEAD directly.
+set -euo pipefail
+
+usage() {
+  echo "Usage: jj pr checkout <pr-number-or-url> [remote-name]" >&2
+  exit 1
+}
+
+[ "${1:-}" = "checkout" ] || [ "${1:-}" = "co" ] || usage
+shift
+[ $# -ge 1 ] || usage
+arg="$1"; shift
+
+remotes="$(jj git remote list)"
+
+owner_repo_for_remote() {
+  echo "$remotes" | awk -v r="$1" '$1==r{print $2}' | sed -E 's#.*[:/]([^/]+/[^/]+)\.git$#\1#'
+}
+
+remote_for_owner_repo() {
+  echo "$remotes" | while read -r name url; do
+    case "$url" in
+      *"$1"*) echo "$name"; return ;;
+    esac
+  done
+}
+
+gh_repo_flag=()
+if [[ "$arg" == *github.com*/pull/* ]]; then
+  pr_num="${arg##*/pull/}"; pr_num="${pr_num%%/*}"
+  owner_repo="$(echo "$arg" | sed -E 's#https?://github\.com/([^/]+/[^/]+)/pull/.*#\1#')"
+  remote="$(remote_for_owner_repo "$owner_repo")"
+  [ -n "$remote" ] || { echo "No jj/git remote configured for $owner_repo" >&2; exit 1; }
+  gh_repo_flag=(-R "$owner_repo")
+else
+  pr_num="$arg"
+  if [ $# -ge 1 ]; then
+    remote="$1"
+    owner_repo="$(owner_repo_for_remote "$remote")"
+    [ -n "$owner_repo" ] || {
+      echo "Unknown remote '$remote'. Configured: $(echo "$remotes" | awk '{print $1}' | tr '\n' ' ')" >&2
+      exit 1
+    }
+    gh_repo_flag=(-R "$owner_repo")
+  else
+    n_remotes="$(echo "$remotes" | wc -l)"
+    if [ "$n_remotes" -gt 1 ]; then
+      echo "Multiple remotes configured — specify one to avoid resolving against the wrong repo:" >&2
+      echo "$remotes" | sed 's/^/  /' >&2
+      echo "  jj pr checkout $pr_num <remote-name>" >&2
+      exit 1
+    fi
+    remote="$(echo "$remotes" | awk '{print $1}')"
+  fi
+fi
+
+info="$(gh pr view "$pr_num" "${gh_repo_flag[@]}" --json headRefName,isCrossRepository,url)"
+branch="$(echo "$info" | jq -r .headRefName)"
+is_cross="$(echo "$info" | jq -r .isCrossRepository)"
+url="$(echo "$info" | jq -r .url)"
+
+if [ "$is_cross" = "true" ]; then
+  echo "PR is from a fork ($url) — the branch '$branch' isn't on remote '$remote'; cross-repo checkout isn't handled." >&2
+  exit 1
+fi
+
+echo "jj pr checkout: $url -> $remote/$branch" >&2
+jj git fetch --remote "$remote" --branch "$branch"
+jj new "${branch}@${remote}"
