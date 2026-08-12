@@ -7,27 +7,10 @@ local default_wallpaper = "$HOME/dotfiles/wallpapers/arch-hyprland/0anime.jpg"
 local current_wallpaper = "$HOME/.config/hypr/current_wallpaper"
 local reload_session = "$HOME/dotfiles/bin/reload-rice"
 
-hl.monitor({
-    output = "HDMI-A-1",
-    mode = "1920x1080@60",
-    position = "0x0",
-    scale = 1,
-})
-
-hl.monitor({
-    output = "eDP-1",
-    mode = "1920x1080@60",
-    position = "0x1080",
-    scale = 1,
-})
-
--- fallback for any other/unrecognized monitor
-hl.monitor({
-    output = "",
-    mode = "preferred",
-    position = "auto",
-    scale = 1,
-})
+-- Monitor layout is fully owned by hyprmod (see hyprland-gui.lua's
+-- `-- Monitors` section, loaded via require("hyprland-gui") below).
+-- Do not add per-output hl.monitor() rules here — configure via hyprmod's
+-- Monitors page instead, so there's a single source of truth.
 
 hl.env("XCURSOR_SIZE", "24")
 hl.env("HYPRCURSOR_SIZE", "24")
