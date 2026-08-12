@@ -8,10 +8,25 @@ local current_wallpaper = "$HOME/.config/hypr/current_wallpaper"
 local reload_session = "$HOME/dotfiles/bin/reload-rice"
 
 hl.monitor({
+    output = "HDMI-A-1",
+    mode = "1920x1080@60",
+    position = "0x0",
+    scale = 1,
+})
+
+hl.monitor({
+    output = "eDP-1",
+    mode = "1920x1080@60",
+    position = "0x1080",
+    scale = 1,
+})
+
+-- fallback for any other/unrecognized monitor
+hl.monitor({
     output = "",
     mode = "preferred",
     position = "auto",
-   scale = 1,
+    scale = 1,
 })
 
 hl.env("XCURSOR_SIZE", "24")
