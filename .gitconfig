@@ -1,0 +1,24 @@
+[user]
+	email = prasanth@8gears.com
+	name = Prasanth Baskar
+[credential "https://github.com"]
+	helper = 
+	helper = !/home/linuxbrew/.linuxbrew/bin/gh auth git-credential
+[credential "https://gist.github.com"]
+	helper = 
+	helper = !/home/linuxbrew/.linuxbrew/bin/gh auth git-credential
+[http]
+	postBuffer = 524288000
+	lowSpeedLimit = 0
+	lowSpeedTime = 999999
+	version = HTTP/2
+
+# Clone/fetch over HTTPS (fast, no per-connection SSH handshake tax) but
+# push over SSH (so commit signing + key-based auth stay untouched).
+# insteadOf rewrites ALL operations git@github.com: -> https://github.com/;
+# the pushInsteadOf below is checked first for pushes and remaps it back
+# to SSH before the general insteadOf rule ever applies to push.
+[url "https://github.com/"]
+	insteadOf = git@github.com:
+[url "git@github.com:"]
+	pushInsteadOf = git@github.com:
