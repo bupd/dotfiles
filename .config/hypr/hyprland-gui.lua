@@ -6,3 +6,21 @@ hl.config({
         gaps_in = 8,
     },
 })
+
+-- Monitors
+hl.monitor({
+    output = "HDMI-A-1",
+    disabled = false,
+    mode = "1920x1080@60.00Hz",
+    position = "-230x-640",
+    scale = 0.8,
+    cm = "srgb",
+})
+hl.monitor({
+    output = "eDP-1",
+    disabled = false,
+    mode = "1920x1080@60.06Hz",
+    position = "80x710",
+    scale = 1,
+    cm = "srgb",
+})
