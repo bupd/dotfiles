@@ -3,6 +3,13 @@
 # Run `ghostty +list-themes` to see all available themes.
 theme = Catppuccin Mocha
 
+# Keep the terminal compact enough for the preferred working layout
+font-size = 9
+
+# Let the desktop subtly show through while keeping terminal text readable
+background-opacity = 0.9
+background-blur = true
+
 # Run as a single GTK instance, consistent with GNOME app conventions
 gtk-single-instance = true
 
@@ -18,6 +25,9 @@ resize-overlay = never
 
 # F11 is the GNOME standard for fullscreen (overrides Ghostty's Ctrl+Enter default)
 keybind = f11=toggle_fullscreen
+
+# Reload the Ghostty configuration without restarting the terminal
+keybind = alt+shift+r=reload_config
 
 # use zsh
 command = /usr/bin/zsh -l -i
