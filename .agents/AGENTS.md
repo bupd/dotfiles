@@ -32,8 +32,6 @@ To notify the user on their devices (task done, CI finished, input needed), send
 ntfy publish bupd_agents "your message here"
 ```
 
-Fallback if `ntfy` CLI is unavailable: `curl -d "your message here" ntfy.sh/bupd_agents`
-
 Use for: long-running task completion, CI/build results, blocking questions when the user may be away. Keep messages short and actionable (e.g. `PR 527 CI green - ready to merge`). Do not spam per-step progress — one notification per outcome.
 
 ## Neovim PR Review
