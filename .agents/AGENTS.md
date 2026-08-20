@@ -24,6 +24,16 @@ Harbor (`~/code/OSS/harbor/`) is a bare repo with worktrees named `{remote}-{des
 2. NEVER push `8gcr` or `next` code to `upstream`.
 3. When unsure, ask. Confirm remote + branch before force-push.
 
+## User Notifications (ntfy)
+
+To notify the user on their devices (task done, CI finished, input needed), send:
+
+```bash
+curl -d "your message here" ntfy.sh/bupd_agents
+```
+
+Use for: long-running task completion, CI/build results, blocking questions when the user may be away. Keep messages short and actionable (e.g. `PR 527 CI green - ready to merge`). Do not spam per-step progress — one notification per outcome.
+
 ## Neovim PR Review
 
 When the user provides a GitHub PR URL or PR number and wants local Neovim review, use the `neovim-pr-review` skill or run:

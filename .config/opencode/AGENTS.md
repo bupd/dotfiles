@@ -4,6 +4,16 @@
 
 Treat root-level filesystem paths as read-only for writes on this machine. Do not create, edit, or stage scratch files under `/` or `/tmp`; keep temporary files, generated files, and command output artifacts inside the active project/workspace, using a project-local path such as `.opencode/tmp/` when a temp directory is needed.
 
+## User Notifications (ntfy)
+
+To notify the user on their devices (task done, CI finished, input needed), send:
+
+```bash
+curl -d "your message here" ntfy.sh/bupd_agents
+```
+
+Use for: long-running task completion, CI/build results, blocking questions when the user may be away. Keep messages short and actionable (e.g. `PR 527 CI green - ready to merge`). Do not spam per-step progress — one notification per outcome.
+
 ## Neovim PR Review
 
 When the user provides a GitHub PR URL or PR number and wants local Neovim review, use the shared helper:
