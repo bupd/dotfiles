@@ -4,3 +4,20 @@ state.yml
 .zshrc
 .config/opencode/
 .config/hypr/current_wallpaper
+
+# Claude Code runtime/sensitive data — never commit (public repo)
+.claude/.credentials.json
+.claude/.last-cleanup
+.claude/backups/
+.claude/cache/
+.claude/file-history/
+.claude/history.jsonl
+.claude/paste-cache/
+.claude/plugins/
+.claude/projects/
+.claude/session-env/
+.claude/sessions/
+.claude/shell-snapshots/
+.claude/todos/
+.claude/statsig/
+.agents/.skill-lock.json
