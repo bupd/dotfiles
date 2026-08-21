@@ -3,6 +3,7 @@
 ## Table of Contents
 - Option structs
 - Variadic functional options
+- Iterators for sequences (Go 1.23+)
 - Global state avoidance
 - Documentation conventions
 - Concurrency documentation
@@ -111,6 +112,45 @@ Key rules:
 - Unexported options struct restricts definitions to the package
 - Last option wins on conflict
 - Process in order
+
+## Iterators for Sequences (Go 1.23+)
+
+When an API yields a sequence of values, return an iterator (`iter.Seq[T]` /
+`iter.Seq2[K, V]`) instead of allocating a slice or exposing a channel:
+
+```go
+// GOOD: lazy, allocation-free, works with for-range and the slices/maps helpers
+func (idx *Index) Lookup(prefix string) iter.Seq2[string, *Entry] {
+    return func(yield func(string, *Entry) bool) {
+        for _, e := range idx.entries {
+            if strings.HasPrefix(e.Key, prefix) {
+                if !yield(e.Key, e.Entry) {
+                    return
+                }
+            }
+        }
+    }
+}
+
+// Caller:
+for key, entry := range idx.Lookup("go") { ... }
+
+// BAD: forces full materialization on every caller
+func (idx *Index) Lookup(prefix string) []*Entry
+
+// BAD: channels as iterators — goroutine leaks if caller stops early
+func (idx *Index) Lookup(prefix string) <-chan *Entry
+```
+
+Conventions:
+
+- Method naming: `All()` for everything, noun-like names for filtered views
+  (matches stdlib: `maps.Keys`, `strings.Lines`, `reflect.Type.Fields`)
+- Callers materialize when needed: `slices.Collect(seq)`, `slices.Sorted(seq)`, `maps.Collect(seq2)`
+- Return a slice instead when the data is already materialized and small, or
+  callers nearly always need random access
+- The `iter.Pull` adapter exists for callers who need pull-style iteration — don't
+  design push and pull variants of the same API
 
 ## Global State Avoidance
 
@@ -297,3 +337,16 @@ seen := make(map[string]bool, shardSize) // known shard size
 Maps must be explicitly initialized before writing. Reading from nil maps is fine.
 
 Default to zero init or composite literals unless profiling shows preallocation helps.
+
+### Pointers to values
+
+`new` accepts an expression since Go 1.26 — useful for optional/pointer fields:
+
+```go
+// GOOD (Go 1.26+)
+opts := Options{Timeout: new(30 * time.Second)}
+
+// OLD: intermediate variable or a ptr() helper
+timeout := 30 * time.Second
+opts := Options{Timeout: &timeout}
+```

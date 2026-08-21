@@ -6,6 +6,7 @@
 - Test helpers vs assertion helpers
 - t.Error vs t.Fatal
 - Test setup scoping
+- Modern testing APIs (Go 1.24+)
 - Real transports
 - Acceptance testing
 
@@ -76,6 +77,9 @@ func TestStrJoin(t *testing.T) {
 }
 ```
 
+Since Go 1.22 loop variables are per-iteration: never write `tt := tt` before the
+subtest closure, even with `t.Parallel()`.
+
 ## Test Helpers
 
 Mark with `t.Helper()`. Use `t.Fatal` for setup failures (not test assertions).
@@ -127,15 +131,12 @@ func TestRevEngine(t *testing.T) {
     }
 
     var wg sync.WaitGroup
-    wg.Add(num)
-    for i := 0; i < num; i++ {
-        go func() {
-            defer wg.Done()
+    for range num {
+        wg.Go(func() { // Go 1.25+; wg.Add(1)/defer wg.Done() on older versions
             if err := engine.Vroom(); err != nil {
                 t.Errorf("No vroom left: %v", err) // NOT t.Fatal
-                return
             }
-        }()
+        })
     }
     wg.Wait()
 }
@@ -212,6 +213,62 @@ func runMain(ctx context.Context, m *testing.M) (int, error) {
     return m.Run(), nil
 }
 ```
+
+## Modern Testing APIs (Go 1.24+)
+
+### Built-in fixtures — prefer over hand-rolled setup
+
+```go
+func TestServer(t *testing.T) {
+    ctx := t.Context()      // canceled just before test cleanup runs (Go 1.24)
+    dir := t.TempDir()      // auto-removed temp dir
+    t.Chdir(dir)            // changes cwd, restores after test (Go 1.24)
+    t.Setenv("MODE", "test") // restores after test; incompatible with t.Parallel
+}
+```
+
+Use `t.Context()` instead of `context.Background()` in tests — it ties request
+lifetimes to the test and catches goroutines that outlive it.
+
+### Benchmarks: b.Loop, not b.N
+
+```go
+// GOOD (Go 1.24+): setup outside the loop is excluded from timing,
+// and the compiler can't optimize the benchmarked call away
+func BenchmarkParse(b *testing.B) {
+    data := loadTestData(b)
+    for b.Loop() {
+        Parse(data)
+    }
+}
+
+// OLD: for i := 0; i < b.N; i++ — needed manual b.ResetTimer and
+// keepalive tricks to defeat dead-code elimination
+```
+
+### testing/synctest for concurrent, time-dependent code (Go 1.25)
+
+Runs the test in a "bubble" with a fake clock: `time.Sleep` advances instantly
+when all goroutines are blocked, making timeout/retry tests fast and deterministic.
+
+```go
+func TestCacheExpiry(t *testing.T) {
+    synctest.Test(t, func(t *testing.T) {
+        c := NewCache(5 * time.Minute)
+        c.Set("k", "v")
+        time.Sleep(6 * time.Minute) // returns instantly, clock advanced
+        if _, ok := c.Get("k"); ok {
+            t.Error("entry should have expired")
+        }
+        synctest.Wait() // block until all bubble goroutines are idle
+    })
+}
+```
+
+### Test artifacts (Go 1.26)
+
+`t.ArtifactDir()` returns a directory for output files that should outlive the
+test (logs, dumps); persisted when running with `go test -artifacts`.
 
 ## Real Transports
 

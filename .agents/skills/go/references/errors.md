@@ -4,6 +4,7 @@
 - Structured errors
 - Adding context with %v vs %w
 - Placement of %w
+- Combining and inspecting errors
 - Error logging
 - Program initialization and panics
 
@@ -118,27 +119,68 @@ err3 := fmt.Errorf("%w: err3", err2)
 fmt.Println(err3) // err1: err2: err3
 ```
 
+## Combining and Inspecting Errors
+
+Use `errors.Join` when multiple independent failures must all be reported
+(cleanup loops, parallel work, multi-field validation):
+
+```go
+// GOOD: caller can still errors.Is against any joined error
+func closeAll(closers []io.Closer) error {
+    var errs []error
+    for _, c := range closers {
+        if err := c.Close(); err != nil {
+            errs = append(errs, err)
+        }
+    }
+    return errors.Join(errs...) // nil if errs is empty
+}
+```
+
+Extract typed errors with `errors.AsType` (Go 1.26) — generic, no pointer-to-target gymnastics:
+
+```go
+// GOOD (Go 1.26+)
+if pathErr, ok := errors.AsType[*fs.PathError](err); ok {
+    fmt.Println("failed path:", pathErr.Path)
+}
+
+// OLD equivalent
+var pathErr *fs.PathError
+if errors.As(err, &pathErr) { ... }
+```
+
 ## Error Logging
 
 - Don't log and return — let the caller decide
-- Use `log.Error` sparingly (causes flush, expensive); prefer warning level
-- ERROR level should be actionable
-- Be careful with PII in logs
-- Use verbose logging levels: `V(1)` small extra info, `V(2)` traces, `V(3)` large state dumps
+- ERROR level should be actionable; be careful with PII in logs
+- Use `log/slog` for structured logging in services — key/value attrs, not format strings
 
 ```go
-// GOOD: guard expensive calls
-for _, sql := range queries {
-    log.V(1).Infof("Handling %v", sql)
-    if log.V(2) {
-        log.Infof("Handling %v", sql.Explain())
-    }
-    sql.Run(...)
+// GOOD: structured, machine-parseable
+slog.Error("payment declined", "order_id", id, "err", err)
+
+// BAD: unstructured string interpolation
+log.Printf("payment declined for order %s: %v", id, err)
+```
+
+- Guard expensive log-argument computation behind a level check:
+
+```go
+// GOOD: sql.Explain() only runs when debug logging is enabled
+if slog.Default().Enabled(ctx, slog.LevelDebug) {
+    slog.Debug("handling query", "explain", sql.Explain())
 }
 
-// BAD: sql.Explain() called even when log is off
-log.V(2).Infof("Handling %v", sql.Explain())
+// BAD: sql.Explain() always evaluated
+slog.Debug("handling query", "explain", sql.Explain())
 ```
+
+For deferred computation, implement `slog.LogValuer` on the type. To fan out to
+multiple destinations, use `slog.NewMultiHandler` (Go 1.26).
+
+(Google-internal codebases use glog verbosity levels `log.V(n)` instead; match
+whatever the surrounding codebase uses.)
 
 ## Program Initialization
 
@@ -154,7 +196,7 @@ func main() {
 }
 ```
 
-Don't use `log.Fatal` for init errors — a stack trace pointing at a check is less helpful than a clear message.
+Don't use glog's `log.Fatal` for init errors — a stack trace pointing at a check is less helpful than a clear message. (`log.Exit` is glog-specific; with the stdlib, `log.Fatalf` or `fmt.Fprintf(os.Stderr, ...)` + `os.Exit(1)` fills this role — stdlib `log.Fatalf` does not print a stack trace.)
 
 ## Panics
 

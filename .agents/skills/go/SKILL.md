@@ -14,6 +14,8 @@ description: >
 Write Go code that is clear, simple, concise, and maintainable — in that priority order.
 Based on Google's Go Style Guide.
 
+> Last updated: 2026-08-21 — current through **Go 1.26** (released February 2026).
+
 ## Core Workflow
 
 When writing Go code, apply these principles in order:
@@ -50,13 +52,38 @@ When writing Go code, apply these principles in order:
 ### Types
 
 - Use `any` instead of `interface{}`; e.g. `map[string]any` not `map[string]interface{}`
+- Use `min`, `max`, `clear` builtins over hand-rolled versions
+- Generic type aliases are allowed (Go 1.24+): `type Set[T comparable] = map[T]struct{}`
+
+### Modern Stdlib (prefer over hand-rolled loops)
+
+- `slices` package: `slices.Contains`, `slices.Sort`, `slices.SortFunc(s, cmp.Compare)`,
+  `slices.Index`, `slices.Equal`, `slices.Concat` — not manual for-loops
+- `maps` package: `maps.Keys`, `maps.Values` (return iterators; wrap with
+  `slices.Collect` / `slices.Sorted` to materialize), `maps.Clone`, `maps.Copy`
+- `log/slog` for structured logging: `slog.Info("msg", "key", val)` — not `log.Printf` in services
+- `math/rand/v2` — not `math/rand` (no seeding needed; `rand.N`, `rand.IntN`)
+- `errors.Join` to combine multiple errors; `errors.AsType[T](err)` (Go 1.26) over `errors.As`
+- `sync.WaitGroup.Go(fn)` (Go 1.25) — replaces manual `wg.Add(1)` / `go func()` / `defer wg.Done()`
+- `sync.OnceFunc` / `sync.OnceValue` over manual `sync.Once` plumbing
+- `os.Root` (Go 1.24) for filesystem access confined to a directory (traversal-safe)
+- `strings.Builder` for accumulation; `strings.SplitSeq` / `strings.Lines` when only iterating
+- JSON: use `omitzero` (Go 1.24) instead of `omitempty` where zero-value semantics fit better
+
+### Loops & Iterators (Go 1.22+)
+
+- Loop variables are per-iteration since Go 1.22 — never write `tt := tt` capture copies
+- `for i := range n` for counting loops — not `for i := 0; i < n; i++`
+- `for range n` when the index is unused
+- Public APIs yielding sequences should return iterators: `iter.Seq[T]` / `iter.Seq2[K, V]`
+  (see references/api-design.md)
 
 ### Variable Declarations
 
 - `:=` for non-zero initialization: `i := 42`
 - `var` for zero values ready for later use: `var coords Point`
 - Composite literals for known initial values: `primes := []int{2, 3, 5}`
-- `new(T)` or `&T{}` for pointer zero values
+- `new(T)` or `&T{}` for pointer zero values; `new(expr)` (Go 1.26) for a pointer to a value: `new(42)`
 - Specify channel direction: `func sum(values <-chan int) int`
 
 ### Function Design
@@ -75,6 +102,9 @@ When writing Go code, apply these principles in order:
 - Never call `t.Fatal` from goroutines
 - Scope setup to tests that need it; avoid package-level `init()`
 - Test packages: append `test` to package name (`creditcardtest`)
+- `t.Context()` for a context canceled at test end; `t.TempDir()`, `t.Chdir()`, `t.Setenv()`
+- Benchmarks: `for b.Loop() { ... }` (Go 1.24+) — not the `b.N` loop
+- `testing/synctest` (Go 1.25) for deterministic tests of concurrent, time-dependent code
 
 ### Documentation
 
@@ -87,6 +117,12 @@ When writing Go code, apply these principles in order:
 
 - Group: stdlib, then third-party, then internal (blank line between groups)
 - Rename proto imports with `pb` / `grpc` suffix: `foopb "path/to/foo_go_proto"`
+
+### Tooling & Modules
+
+- Track dev tools with the `tool` directive in go.mod (Go 1.24+): `go get -tool golang.org/x/tools/cmd/stringer` — not a `tools.go` file
+- `go fix ./...` (rewritten in Go 1.26) and `gopls` "modernize" analyzers auto-migrate old patterns to the idioms above — suggest them when refactoring legacy code
+- `govulncheck` for vulnerability scanning; `go vet` always
 
 ## Detailed Guidance
 
