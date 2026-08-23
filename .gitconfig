@@ -11,7 +11,7 @@
 	postBuffer = 524288000
 	lowSpeedLimit = 0
 	lowSpeedTime = 999999
-	version = HTTP/2
+	version = HTTP/1.1
 
 # Clone/fetch over HTTPS (fast, no per-connection SSH handshake tax) but
 # push over SSH (so commit signing + key-based auth stay untouched).
@@ -19,6 +19,7 @@
 # the pushInsteadOf below is checked first for pushes and remaps it back
 # to SSH before the general insteadOf rule ever applies to push.
 [url "https://github.com/"]
-	insteadOf = git@github.com:
 [url "git@github.com:"]
 	pushInsteadOf = git@github.com:
+[url "ssh://git@github.com/"]
+	insteadOf = https://github.com/
