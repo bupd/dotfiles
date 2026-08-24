@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=DbGate
+Exec=/var/home/bupd/Applications/DbGate.AppImage --no-sandbox %U
+Terminal=false
+Type=Application
+Icon=/var/home/bupd/.local/share/icons/dbgate.png
+StartupWMClass=DbGate
+Comment=Opensource database administration tool
+Categories=Development;
