@@ -9,3 +9,6 @@ pr = ["util", "exec", "--", "jj-pr"]
 
 [ui]
 default-command = "log"
+
+[snapshot]
+auto-update-stale = true
