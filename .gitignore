@@ -18,6 +18,7 @@ state.yml
 .claude/session-env/
 .claude/sessions/
 .claude/shell-snapshots/
+.claude/tasks/
 .claude/todos/
 .claude/statsig/
 .agents/.skill-lock.json
