@@ -24,18 +24,15 @@ Harbor (`~/code/OSS/harbor/`) is a bare repo with worktrees named `{remote}-{des
 2. NEVER push `8gcr` or `next` code to `upstream`.
 3. When unsure, ask. Confirm remote + branch before force-push.
 
-## User Notifications (ntfy + dunst)
+## User Notifications (ntfy)
 
-To notify the user (task done, CI finished, input needed), send BOTH — ntfy reaches their phone/other devices, dunst shows a desktop notification on this machine:
+To notify the user on their devices (task done, CI finished, input needed), send:
 
 ```bash
 ntfy publish bupd_agents "your message here"
-dunstify -a "Agent" -u normal "Title" "your message here"
 ```
 
-Use `-u critical` on dunstify only for blocking questions or failures that need immediate attention. If `dunstify` is unavailable, fall back to `notify-send`.
-
-Use for: long-running task completion, CI/build results, blocking questions when the user may be away. Keep messages short and actionable (e.g. `PR 527 CI green - ready to merge`). Do not spam per-step progress — one notification per outcome, sent to both channels.
+Use for: long-running task completion, CI/build results, blocking questions when the user may be away. Keep messages short and actionable (e.g. `PR 527 CI green - ready to merge`). Do not spam per-step progress — one notification per outcome.
 
 ## Neovim PR Review
 
