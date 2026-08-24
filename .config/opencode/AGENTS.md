@@ -4,15 +4,18 @@
 
 Treat root-level filesystem paths as read-only for writes on this machine. Do not create, edit, or stage scratch files under `/` or `/tmp`; keep temporary files, generated files, and command output artifacts inside the active project/workspace, using a project-local path such as `.opencode/tmp/` when a temp directory is needed.
 
-## User Notifications (ntfy)
+## User Notifications (ntfy + dunst)
 
-To notify the user on their devices (task done, CI finished, input needed), send:
+To notify the user (task done, CI finished, input needed), send BOTH — ntfy reaches their phone/other devices, dunst shows a desktop notification on this machine:
 
 ```bash
 ntfy publish bupd_agents "your message here"
+dunstify -a "OpenCode" -u normal "Title" "your message here"
 ```
 
-Use for: long-running task completion, CI/build results, blocking questions when the user may be away. Keep messages short and actionable (e.g. `PR 527 CI green - ready to merge`). Do not spam per-step progress — one notification per outcome.
+Use `-u critical` on dunstify only for blocking questions or failures that need immediate attention. If `dunstify` is unavailable, fall back to `notify-send`.
+
+Use for: long-running task completion, CI/build results, blocking questions when the user may be away. Keep messages short and actionable (e.g. `PR 527 CI green - ready to merge`). Do not spam per-step progress — one notification per outcome, sent to both channels.
 
 ## Neovim PR Review
 
