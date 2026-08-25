@@ -1,27 +1,65 @@
 [user]
-	email = prasanth@8gears.com
 	name = Prasanth Baskar
+	email = prasanth@8gears.com
+	signingkey = AB61B10B051249E10E6A81D4E6BBEA85527E1889
 [credential "https://github.com"]
-	helper = 
-	helper = !/home/linuxbrew/.linuxbrew/bin/gh auth git-credential
+	helper =
+	helper = !/usr/bin/gh auth git-credential
 [credential "https://gist.github.com"]
-	helper = 
-	helper = !/home/linuxbrew/.linuxbrew/bin/gh auth git-credential
-[http]
-	postBuffer = 524288000
-	lowSpeedLimit = 0
-	lowSpeedTime = 999999
-	version = HTTP/1.1
-
-# Clone/fetch over HTTPS (fast, no per-connection SSH handshake tax) but
-# push over SSH (so commit signing + key-based auth stay untouched).
-# insteadOf rewrites ALL operations git@github.com: -> https://github.com/;
-# the pushInsteadOf below is checked first for pushes and remaps it back
-# to SSH before the general insteadOf rule ever applies to push.
-[url "https://github.com/"]
-[url "git@github.com:"]
-	pushInsteadOf = git@github.com:
-[url "ssh://git@github.com/"]
-	insteadOf = https://github.com/
+	helper =
+	helper = !/usr/bin/gh auth git-credential
+[core]
+	editor = nvim
+	filemode = false
 [pull]
 	rebase = true
+[http]
+	postBuffer = 524288000
+[safe]
+	directory = /home/bupd/s/code
+	directory = /home/bupd/s/code/OSS/PRCHECKcli
+	directory = /home/bupd/s/code/OSS/PRCHECKcli
+	directory = /home/bupd/s/code/OSS/prcheckcli
+	directory = /home/bupd/s/code/OSS/test-harbor
+	directory = /home/bupd/s/code/OSS/Harbr
+	directory = /home/bupd/s/code/*
+	directory = /home/bupd/s/gits/hugo
+	directory = /home/bupd/s/gits/hugo
+	directory = /home/bupd/s/gits/hugo
+	directory = /home/bupd/s/gits/go-url-parser
+	directory = /home/bupd/s/krish
+	directory = /home/bupd/dotfiles
+[merge]
+    tool = nvimdiff
+    conflictstyle = diff3
+[mergetool "nvimdiff"]
+    cmd = nvim -d $LOCAL $REMOTE $MERGED -c '$wincmd w' -c 'wincmd J'
+[diff]
+    tool = nvimdiff
+    colorMoved = default
+[core]
+	pager = bat --plain
+[delta]
+    navigate = true
+    light = false
+    side-by-side = true
+    line-numbers = true
+    syntax-theme = gruvbox-dark
+    file-style = bold yellow ul
+    file-decoration-style = none
+    hunk-header-style = file line-number syntax
+[filter "lfs"]
+	required = true
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+[rerere]
+	enabled = true
+	autoUpdate = true
+[commit]
+	gpgsign = true
+[tag]
+	gpgsign = true
+[gpg]
+	format = openpgp
+	program = gpg

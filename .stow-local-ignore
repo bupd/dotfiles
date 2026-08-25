@@ -1,6 +1,26 @@
+# Stow default ignore list (defining this file replaces the defaults,
+# so they must be repeated here), plus repo-specific entries at the end.
+RCS
+.+,v
+CVS
+\.\#.+
+\.cvsignore
+\.svn
+_darcs
+\.hg
 \.git
 \.gitignore
+\.gitmodules
+.+~
+\#.*\#
+^/README.*
+^/LICENSE.*
+^/COPYING
+# this ignore file itself
 \.stow-local-ignore
+# jj store of this repo itself — must never be linked into $HOME
+\.jj
+# repo-internal dirs, not meant to be linked into $HOME
 \.zshrc
 agents
 bootc

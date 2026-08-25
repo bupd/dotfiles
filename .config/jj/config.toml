@@ -4,11 +4,25 @@
 name = "Prasanth Baskar"
 email = "prasanth@8gears.com"
 
-[aliases]
-pr = ["util", "exec", "--", "jj-pr"]
-
 [ui]
+pager = ":builtin"
 default-command = "log"
 
 [snapshot]
 auto-update-stale = true
+
+[aliases]
+  pr = [
+    "util", "exec", "--", "bash", "-e", "-c", """
+  if [ "${1:-}" != "checkout" ] || [ -z "${2:-}" ]; then
+    echo "usage: jj pr checkout <number>" >&2
+    exit 2
+  fi
+
+  pr="$2"
+  cd "$JJ_WORKSPACE_ROOT"
+  git fetch origin "refs/pull/$pr/head:refs/remotes/origin/pr/$pr"
+  jj git import
+  jj new "pr/$pr@origin"
+  """, ""
+  ]
