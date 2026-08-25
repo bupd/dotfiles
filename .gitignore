@@ -10,8 +10,13 @@ state.yml
 .claude/.last-cleanup
 .claude/backups/
 .claude/cache/
+.claude/daemon/
+.claude/daemon.lock
+.claude/daemon.log
+.claude/daemon.status.json
 .claude/file-history/
 .claude/history.jsonl
+.claude/jobs/
 .claude/paste-cache/
 .claude/plugins/
 .claude/projects/

@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+"""post_transcription_hook for hyprwhspr.
+
+Appends every dictation to a local JSONL history file so a misclick /
+lost paste / restored clipboard doesn't lose the transcript for good.
+
+Observer-only: reads the transcription on stdin, writes nothing to
+stdout, so hyprwhspr keeps using the original text unchanged
+(see config.schema.json: "Empty stdout = observer-only").
+
+Wired up via ~/.config/hyprwhspr/config.json -> post_transcription_hook.
+"""
+import json
+import os
+import sys
+from datetime import datetime, timezone
+
+HISTORY_FILE = os.path.expanduser("~/.local/share/hyprwhspr/history.jsonl")
+MAX_ENTRIES = 1000  # trim old history so the file doesn't grow unbounded
+
+
+def main():
+    text = sys.stdin.read()
+    if not text.strip():
+        return
+
+    os.makedirs(os.path.dirname(HISTORY_FILE), exist_ok=True)
+
+    entry = {
+        "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "model": os.environ.get("HYPRWHSPR_MODEL", ""),
+        "backend": os.environ.get("HYPRWHSPR_BACKEND", ""),
+        "text": text,
+    }
+
+    with open(HISTORY_FILE, "a") as f:
+        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+    # Trim to last MAX_ENTRIES lines to bound growth.
+    with open(HISTORY_FILE) as f:
+        lines = f.readlines()
+    if len(lines) > MAX_ENTRIES:
+        with open(HISTORY_FILE, "w") as f:
+            f.writelines(lines[-MAX_ENTRIES:])
+
+
+if __name__ == "__main__":
+    main()

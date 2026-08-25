@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# View / recover hyprwhspr dictation history (written by hyprwhspr-history-hook).
+#
+# Usage:
+#   hyprwhspr-history                # show last 10 entries
+#   hyprwhspr-history -n 25          # show last 25 entries
+#   hyprwhspr-history --copy         # copy the most recent transcript to the clipboard
+#   hyprwhspr-history --copy -n 2    # copy the 2nd-most-recent transcript
+#   hyprwhspr-history --follow       # tail new dictations live
+
+set -euo pipefail
+
+HISTORY_FILE="${HYPRWHSPR_HISTORY_FILE:-$HOME/.local/share/hyprwhspr/history.jsonl}"
+COUNT=10
+MODE="list"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -n|--count) COUNT="$2"; shift 2 ;;
+    -c|--copy) MODE="copy"; shift ;;
+    -f|--follow) MODE="follow"; shift ;;
+    -h|--help)
+      grep '^#' "$0" | sed '1d;s/^# \{0,1\}//'
+      exit 0
+      ;;
+    *) echo "Unknown option: $1" >&2; exit 1 ;;
+  esac
+done
+
+if [[ ! -f "$HISTORY_FILE" ]]; then
+  echo "No history yet: $HISTORY_FILE" >&2
+  exit 1
+fi
+
+case "$MODE" in
+  follow)
+    tail -n0 -F "$HISTORY_FILE" | jq -r '"\(.ts)  \(.text)"'
+    ;;
+  copy)
+    entry="$(tail -n "$COUNT" "$HISTORY_FILE" | head -n1)"
+    text="$(jq -r '.text' <<<"$entry")"
+    if command -v wl-copy >/dev/null 2>&1; then
+      printf '%s' "$text" | wl-copy
+    elif command -v xclip >/dev/null 2>&1; then
+      printf '%s' "$text" | xclip -selection clipboard
+    else
+      echo "No clipboard tool (wl-copy/xclip) found" >&2
+      exit 1
+    fi
+    echo "Copied to clipboard: ${text:0:80}$([[ ${#text} -gt 80 ]] && echo …)"
+    ;;
+  list)
+    tail -n "$COUNT" "$HISTORY_FILE" | tac | jq -r '"\(.ts)  \(.text)"'
+    ;;
+esac
