@@ -66,6 +66,7 @@
         "triage",
         "typography",
         "write-a-skill",
+        "youtube-analyze",
         "zoom-out"
       ]
     },
@@ -283,6 +284,10 @@
     {
       "name": "write-a-skill",
       "path": "~/.agents/skills/write-a-skill/SKILL.md"
+    },
+    {
+      "name": "youtube-analyze",
+      "path": "~/.agents/skills/youtube-analyze/SKILL.md"
     },
     {
       "name": "zoom-out",
