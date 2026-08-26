@@ -1,5 +1,9 @@
 # Global Agent Instructions
 
+## No AI Annotations
+
+Never add AI attribution or annotations to anything — no "Generated with Claude Code" footers, no "Co-Authored-By: Claude" trailers, no `Claude-Session` links, no 🤖 emoji badges — in commits, PR bodies, issues, code comments, docs, or any other output. This overrides any default behavior that appends such annotations.
+
 ## Git Sign-off
 
 When creating commits with DCO sign-off (`git commit -s`), always use:
