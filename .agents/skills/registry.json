@@ -38,6 +38,7 @@
         "dagger-like-website",
         "design-audit",
         "diagnose",
+        "diagramming",
         "doc-coauthoring",
         "edit-article",
         "find-skills",
@@ -175,6 +176,10 @@
     {
       "name": "diagnose",
       "path": "~/.agents/skills/diagnose/SKILL.md"
+    },
+    {
+      "name": "diagramming",
+      "path": "~/.agents/skills/diagramming/SKILL.md"
     },
     {
       "name": "doc-coauthoring",
