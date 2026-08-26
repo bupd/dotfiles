@@ -1,5 +1,9 @@
 {
   "model": "claude-fable-5[1m]",
   "skipDangerousModePermissionPrompt": true,
+  "statusLine": {
+    "type": "command",
+    "command": "~/.claude/statusline.sh"
+  },
   "theme": "dark"
 }
