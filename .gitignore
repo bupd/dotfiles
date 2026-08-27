@@ -27,3 +27,8 @@ state.yml
 .claude/todos/
 .claude/statsig/
 .agents/.skill-lock.json
+
+# herdr runtime state — never commit (sockets, logs, live session layout)
+.config/herdr/*.sock
+.config/herdr/*.log
+.config/herdr/session.json
