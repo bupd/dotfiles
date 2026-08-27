@@ -1,5 +1,9 @@
 # Global Agent Instructions
 
+## Prefer jj over git
+
+Prefer Jujutsu (`jj`) over raw `git` for version control operations whenever the repository is a jj repo (a `.jj` directory exists at or above the repo root) — status, diffs, commits, rebases, conflict resolution, pushing, etc. Fall back to `git` only when the repo has no jj support, when a tool/workflow requires git specifically (e.g. `gh`, scripts that shell out to git), or when the user explicitly asks for git.
+
 ## No AI Annotations
 
 Never add AI attribution or annotations to anything — no "Generated with Claude Code" footers, no "Co-Authored-By: Claude" trailers, no `Claude-Session` links, no 🤖 emoji badges — in commits, PR bodies, issues, code comments, docs, or any other output. This overrides any default behavior that appends such annotations.
