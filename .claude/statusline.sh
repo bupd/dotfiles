@@ -21,6 +21,13 @@ parts=()
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   repo=$(basename "$(git rev-parse --show-toplevel 2>/dev/null)")
   branch=$(git branch --show-current 2>/dev/null)
+
+  # jj repos/workspaces keep git HEAD detached; show the nearest bookmark
+  # reachable from @ instead of a bare commit hash.
+  if [ -z "$branch" ] && command -v jj >/dev/null 2>&1; then
+    branch=$(timeout 1 jj log --ignore-working-copy --no-graph \
+      -r 'latest(::@ & bookmarks())' -T 'bookmarks.join(",")' 2>/dev/null)
+  fi
   [ -z "$branch" ] && branch=$(git rev-parse --short HEAD 2>/dev/null)
 
   # PR number for the current branch, cached for 60s per repo+branch.
