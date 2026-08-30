@@ -1,0 +1,15 @@
+{
+  "$schema": "https://raw.githubusercontent.com/goodroot/hyprwhspr/main/share/config.schema.json",
+  "use_hypr_bindings": true,
+  "keyboard_device_names": [
+    "Logitech G502 HERO Gaming Mouse Keyboard",
+    "PandaKB.COM Corne V3",
+    "PandaKB.COM Corne V3 Keyboard"
+  ],
+  "audio_device_name": "alsa_input.usb-0c76_USB_PnP_Audio_Device-00.mono-fallback",
+  "model": "base.en",
+  "transcription_backend": "nvidia",
+  "audio_ducking": true,
+  "post_transcription_hook": "/home/bupd/bin/hyprwhspr-history-hook",
+  "clipboard_clear_delay": 3600
+}
