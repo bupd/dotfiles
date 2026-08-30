@@ -1,9 +1,9 @@
 {
-  "model": "claude-fable-5[1m]",
-  "skipDangerousModePermissionPrompt": true,
+  "model": "sonnet",
   "statusLine": {
     "type": "command",
     "command": "~/.claude/statusline.sh"
   },
+  "skipDangerousModePermissionPrompt": true,
   "theme": "dark"
 }
