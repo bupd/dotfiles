@@ -26,6 +26,9 @@ state.yml
 .claude/tasks/
 .claude/todos/
 .claude/statsig/
+.claude/plans/
+.claude/gh-pr-status-cache.json
+.claude/chrome/
 .agents/.skill-lock.json
 
 # herdr runtime state — never commit (sockets, logs, live session layout)
