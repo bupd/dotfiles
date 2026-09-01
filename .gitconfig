@@ -3,10 +3,10 @@
 	email = prasanth@8gears.com
 	signingkey = AB61B10B051249E10E6A81D4E6BBEA85527E1889
 [credential "https://github.com"]
-	helper =
+	helper = 
 	helper = !/usr/bin/gh auth git-credential
 [credential "https://gist.github.com"]
-	helper =
+	helper = 
 	helper = !/usr/bin/gh auth git-credential
 [core]
 	editor = nvim
