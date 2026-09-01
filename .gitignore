@@ -35,3 +35,6 @@ state.yml
 .config/herdr/*.sock
 .config/herdr/*.log
 .config/herdr/session.json
+
+# excalidraw-diagram skill renderer runtime (python venv, lockfile stays)
+.agents/skills/excalidraw-diagram/references/.venv/

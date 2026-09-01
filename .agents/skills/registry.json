@@ -108,6 +108,10 @@
   ],
   "skills": [
     {
+      "name": "Agentic UX Design - Relationship-Centric Interfaces",
+      "path": "~/.agents/skills/relationship-design/SKILL.md"
+    },
+    {
       "name": "angular-component",
       "path": "~/.agents/skills/angular-component/SKILL.md"
     },
@@ -196,6 +200,10 @@
       "path": "~/.agents/skills/edit-article/SKILL.md"
     },
     {
+      "name": "excalidraw-diagram",
+      "path": "~/.agents/skills/excalidraw-diagram/SKILL.md"
+    },
+    {
       "name": "find-skills",
       "path": "~/.agents/skills/find-skills/SKILL.md"
     },
@@ -204,12 +212,12 @@
       "path": "~/.agents/skills/frontend-design/SKILL.md"
     },
     {
-      "name": "github-actions-taskfile",
-      "path": "~/.agents/skills/github-actions-taskfile/SKILL.md"
-    },
-    {
       "name": "git-worktree-management",
       "path": "~/.agents/skills/git-worktree-management/SKILL.md"
+    },
+    {
+      "name": "github-actions-taskfile",
+      "path": "~/.agents/skills/github-actions-taskfile/SKILL.md"
     },
     {
       "name": "go-idiomatic",
@@ -242,10 +250,6 @@
     {
       "name": "prototype",
       "path": "~/.agents/skills/prototype/SKILL.md"
-    },
-    {
-      "name": "Agentic UX Design - Relationship-Centric Interfaces",
-      "path": "~/.agents/skills/relationship-design/SKILL.md"
     },
     {
       "name": "remotion-best-practices",
