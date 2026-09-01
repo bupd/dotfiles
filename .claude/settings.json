@@ -1,9 +1,10 @@
 {
-  "model": "sonnet",
+  "model": "fable",
   "statusLine": {
     "type": "command",
     "command": "~/.claude/statusline.sh"
   },
   "skipDangerousModePermissionPrompt": true,
-  "theme": "dark"
+  "theme": "dark",
+  "hooks": {"SessionStart":[{"matcher":"*","hooks":[{"type":"command","command":"bash '/home/bupd/.claude/hooks/herdr-agent-state.sh' session","timeout":10}]}]}
 }
