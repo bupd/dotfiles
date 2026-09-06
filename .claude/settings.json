@@ -1,5 +1,8 @@
 {
   "model": "claude-fable-5[1m]",
+  "env": {
+    "SHELL": "/usr/bin/zsh"
+  },
   "statusLine": {
     "type": "command",
     "command": "~/.claude/statusline.sh"
