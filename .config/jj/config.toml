@@ -26,3 +26,6 @@ auto-update-stale = true
   jj new "pr/$pr@origin"
   """, ""
   ]
+
+[signing]
+behavior = "own"
