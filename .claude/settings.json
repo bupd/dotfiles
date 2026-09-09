@@ -3,6 +3,20 @@
   "env": {
     "SHELL": "/usr/bin/zsh"
   },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash '/home/bupd/.claude/hooks/herdr-agent-state.sh' session",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
   "statusLine": {
     "type": "command",
     "command": "~/.claude/statusline.sh"
@@ -13,6 +27,5 @@
   },
   "skipDangerousModePermissionPrompt": true,
   "theme": "dark",
-  "voiceEnabled": true,
-  "hooks": {"SessionStart":[{"matcher":"*","hooks":[{"type":"command","command":"bash '/home/bupd/.claude/hooks/herdr-agent-state.sh' session","timeout":10}]}]}
+  "voiceEnabled": true
 }
