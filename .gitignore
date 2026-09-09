@@ -29,6 +29,7 @@ state.yml
 .claude/plans/
 .claude/gh-pr-status-cache.json
 .claude/chrome/
+.claude/image-cache/
 .agents/.skill-lock.json
 
 # herdr runtime state — never commit (sockets, logs, live session layout)
@@ -38,3 +39,7 @@ state.yml
 
 # excalidraw-diagram skill renderer runtime (python venv, lockfile stays)
 .agents/skills/excalidraw-diagram/references/.venv/
+
+# identity-backup output archives contain private keys — never commit (public repo)
+identity-backup/*.zip
+identity-backup/.*.partial.zip
