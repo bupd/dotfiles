@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Warp
+GenericName=TerminalEmulator
+Exec=/var/home/bupd/Applications/Warp.AppImage %U
+Terminal=false
+Type=Application
+Icon=/var/home/bupd/.local/share/icons/warp.png
+StartupWMClass=dev.warp.Warp
+Comment=Rust-based terminal
+Keywords=shell;prompt;command;commandline;cmd;
+Categories=System;TerminalEmulator;
