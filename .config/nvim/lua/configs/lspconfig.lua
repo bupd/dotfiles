@@ -13,6 +13,7 @@ local servers = {
 	"bashls",
 	"docker_compose_language_service",
 	"dockerls",
+	"ruby_lsp",
 }
 vim.lsp.enable(servers)
 
