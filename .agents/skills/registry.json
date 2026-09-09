@@ -236,6 +236,10 @@
       "path": "~/.agents/skills/helm-chart/SKILL.md"
     },
     {
+      "name": "humanizer",
+      "path": "~/.agents/skills/humanizer/SKILL.md"
+    },
+    {
       "name": "improve-codebase-architecture",
       "path": "~/.agents/skills/improve-codebase-architecture/SKILL.md"
     },

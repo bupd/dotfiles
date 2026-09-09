@@ -64,6 +64,10 @@ For public repositories, `<pr-url>.patch` and `<pr-url>.diff` also work.
 
 Always follow the `caveman` skill's ultra-compressed communication style for all output: no filler, no articles, no pleasantries, full technical accuracy retained. This applies by default to every session and every spawned/sub-agent, not just when the user asks for it.
 
+## Humanize Written Prose
+
+Apply the `humanizer` skill (`~/.agents/skills/humanizer/SKILL.md`) to all prose deliverables: READMEs, docs, PR bodies, commit messages, issues, articles, and any user-facing text. Remove AI writing tells (not-X-but-Y contrasts, one-line closers, forced triads, em dashes, sales language, bold-label lists, inflated significance) before publishing. This applies to every session and every spawned/sub-agent.
+
 ## Shared Agent Skills
 
 Shared skills live under `~/.agents/skills/<skill-name>/SKILL.md`. Each skill uses YAML frontmatter with `name` and `description`; optional references, scripts, and assets live beside that `SKILL.md`.

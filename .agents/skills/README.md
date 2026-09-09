@@ -21,6 +21,7 @@ Installed from `mattpocock/skills`:
 - `write-a-skill` - Create new agent skills.
 - `diagnose` - Disciplined debugging and regression diagnosis.
 - `grill-with-docs` - Stress-test plans against docs, domain language, and ADRs.
+- `humanizer` - Rewrite AI-sounding text so it reads like the writer; removes AI tells per Wikipedia "Signs of AI writing".
 - `triage` - Triage issues through project workflow states.
 - `improve-codebase-architecture` - Find architecture and refactoring opportunities.
 - `setup-matt-pocock-skills` - Configure repos for the engineering skill set.
