@@ -19,6 +19,10 @@ hl.env("XDG_SESSION_TYPE", "wayland")
 hl.env("XDG_SESSION_DESKTOP", "Hyprland")
 
 hl.on("hyprland.start", function()
+    -- keyring unlock prompts (gcr-prompter) need WAYLAND_DISPLAY in the systemd/dbus
+    -- activation env before any secret-service client runs; reset-failed clears a
+    -- prompter unit stuck failed from an earlier race, or dbus never retries it
+    hl.exec_cmd("sh -c 'dbus-update-activation-environment --systemd WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE; systemctl --user import-environment WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE 2>/dev/null; systemctl --user reset-failed 2>/dev/null || true'")
     hl.exec_cmd("sh -c 'command -v awww-daemon >/dev/null 2>&1 && (pgrep -x awww-daemon >/dev/null 2>&1 || awww-daemon >/dev/null 2>&1 &)'")
     hl.exec_cmd('sh -c "mkdir -p $HOME/.config/hypr && [ -e ' .. current_wallpaper .. ' ] || ln -sfn ' .. default_wallpaper .. ' ' .. current_wallpaper .. '"')
     hl.exec_cmd('sh -c "command -v awww >/dev/null 2>&1 && sleep 0.5 && awww img --transition-type none ' .. current_wallpaper .. '"')
