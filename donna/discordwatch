@@ -44,6 +44,9 @@ ENV_FILE = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "d
 STATE_DIR = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "donna"
 STATE_FILE = STATE_DIR / "discordwatch.json"
 CACHE = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "donna" / "discord"
+# attachments (images, receipts, PDFs) are kept, unlike transient voice audio,
+# so Donna can Read the file after the fact
+ATTACH = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "donna" / "discord-files"
 API = "https://discord.com/api/v10"
 AGENT = "donna"
 POLL_SECS = 20
@@ -233,26 +236,43 @@ def handle_message(token, msg, where, allowed, bot_id):
 
     for att in msg.get("attachments") or []:
         ctype = att.get("content_type") or ""
-        if not ctype.startswith("audio/"):
-            continue
-        CACHE.mkdir(parents=True, exist_ok=True)
-        ext = Path(att.get("filename") or "voice.ogg").suffix or ".ogg"
-        audio = CACHE / f"{mid}-{att['id']}{ext}"
-        transcript = None
-        if download(token, att["url"], audio):
-            transcript = transcribe(audio)
-        audio.unlink(missing_ok=True)
-        if transcript:
-            pieces.append(("voice", transcript))
-            reply(token, cid, mid, f"\U0001f4dd {transcript}")
+        fname = att.get("filename") or "file"
+        if ctype.startswith("audio/"):
+            CACHE.mkdir(parents=True, exist_ok=True)
+            ext = Path(fname).suffix or ".ogg"
+            audio = CACHE / f"{mid}-{att['id']}{ext}"
+            transcript = None
+            if download(token, att["url"], audio):
+                transcript = transcribe(audio)
+            audio.unlink(missing_ok=True)
+            if transcript:
+                pieces.append(("voice", transcript))
+                reply(token, cid, mid, f"\U0001f4dd {transcript}")
+            else:
+                react(token, cid, mid, WARN)
+                log(f"transcription failed for message {mid}")
         else:
-            react(token, cid, mid, WARN)
-            log(f"transcription failed for message {mid}")
+            # any non-audio attachment (image/receipt/pdf) is kept on disk and
+            # its path handed to Donna, who can Read it directly
+            ATTACH.mkdir(parents=True, exist_ok=True)
+            ext = Path(fname).suffix
+            dest = ATTACH / f"{mid}-{att['id']}{ext}"
+            if download(token, att["url"], dest):
+                kind = "image" if ctype.startswith("image/") else "file"
+                pieces.append((kind, f"{fname} saved at {dest}"))
+            else:
+                react(token, cid, mid, WARN)
+                log(f"attachment download failed for message {mid} ({fname})")
 
     delivered_all = True
     for kind, body in pieces:
         append_inbox(kind, name, where, body)
-        label = "voice message, transcribed locally" if kind == "voice" else "typed message"
+        if kind == "voice":
+            label = "voice message, transcribed locally"
+        elif kind in ("image", "file"):
+            label = f"{kind} attachment on disk - Read the file to see it"
+        else:
+            label = "typed message"
         delivered_all &= prompt_donna(
             f"From Prasanth over Discord ({label}, {where}). Treat it exactly like "
             f"a message he typed to you:\n{body}")
