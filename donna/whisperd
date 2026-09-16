@@ -80,8 +80,14 @@ def _serve_loop(model):
             # task=translate makes every language land as English - Hindi,
             # Tamil, whatever - which is what the agents read best. English
             # in, English out; it is a no-op for English speech.
-            segs, _info = model.transcribe(req["wav"], language=lang, task="translate")
-            text = " ".join(s.text.strip() for s in segs).strip()
+            # vad_filter (Silero) keeps silence/noise away from the decoder -
+            # whisper hallucinates stock phrases ("Thank you.") on non-speech.
+            segs, _info = model.transcribe(
+                req["wav"], language=lang, task="translate",
+                vad_filter=True, condition_on_previous_text=False)
+            kept = [s.text.strip() for s in segs
+                    if s.no_speech_prob < 0.7]
+            text = clean_hallucinations(" ".join(kept).strip())
             conn.sendall((json.dumps({"text": text}) + "\n").encode())
         except Exception as e:
             try:
@@ -90,6 +96,28 @@ def _serve_loop(model):
                 pass
         finally:
             conn.close()
+
+
+# whisper's favorite things to invent from silence, background noise, or
+# music - drop them only when they are the ENTIRE transcript
+HALLUCINATIONS = {
+    "thank you", "thanks", "thank you very much", "thanks for watching",
+    "thank you for watching", "please subscribe", "subscribe",
+    "like and subscribe", "bye", "goodbye", "bye bye", "hi", "hello",
+    "you", "the end", "so", "i'm sorry", "music", "silence",
+}
+
+
+def clean_hallucinations(text):
+    import re
+    norm = re.sub(r"[^a-z' ]", "", text.lower()).strip()
+    if norm in HALLUCINATIONS:
+        return ""
+    # loop hallucination: one short token stuttered over and over
+    words = norm.split()
+    if len(words) >= 6 and len(set(words)) <= 2:
+        return ""
+    return text
 
 
 def ask(payload, timeout=120):
