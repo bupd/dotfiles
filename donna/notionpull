@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# notionpull - save a Notion page you can see in the browser into the vault
+#
+# usage: notionpull <notion-url> [output-name]
+#
+# This does NOT hit the Notion API and needs no token. It records the page
+# you want captured; the actual read happens through the logged-in browser
+# session (Claude drives Chrome, reads the rendered page, writes markdown).
+# That is your own authenticated view - no session cookie is extracted, no
+# private API is called, nothing that a Notion token would unlock.
+#
+# Why not the API: Prasanth is a Guest in the 8gears workspace and cannot
+# mint a token; the unofficial token_v2 path is blocked by the agent's
+# safety layer. Browser-session read is the supported route until a
+# workspace admin grants API access.
+#
+# The queue lives at ~/.notcrawl/browser-pages/queue.txt (one URL per line).
+set -euo pipefail
+
+QUEUE_DIR="$HOME/.notcrawl/browser-pages"
+QUEUE="$QUEUE_DIR/queue.txt"
+
+case "${1:-}" in
+  -h|--help|"") sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+esac
+
+url="$1"
+name="${2:-}"
+mkdir -p "$QUEUE_DIR"
+printf '%s\t%s\n' "$url" "$name" >> "$QUEUE"
+echo "queued for browser capture: $url"
+echo "Claude reads it through the live Chrome session and writes the page"
+echo "into the vault; ask the agent to 'process the notionpull queue'."

@@ -1,0 +1,292 @@
+#!/usr/bin/env python3
+"""notiontask - manage Notion tasks from the CLI (official API, read + write).
+
+usage:
+  notiontask list [--status S] [--assignee NAME] [--limit N]
+  notiontask get <page-id-or-url>
+  notiontask create "Title" [--set "Property=value" ...]
+  notiontask update <page-id-or-url> --set "Property=value" [...]
+  notiontask status <page-id-or-url> <new-status>     # shortcut for --set Status=
+  notiontask search <query> [--limit N]
+  notiontask props                                    # show the task DB schema
+
+Token: NOTION_TOKEN from the environment or ~/.notcrawl/env (chmod 600).
+Task database: NOTION_TASKS_DB in the same file (a database id or URL).
+
+--set values are typed from the live DB schema: title, rich_text, select,
+status, multi_select (comma-separated), people (by name), date (ISO or
+"today"), number, checkbox (true/false), url. Unknown property -> error
+listing valid names, so Donna never guesses a field.
+
+This is the OFFICIAL Notion API (api.notion.com). It needs a token with
+insert/update content capability, which requires workspace Member (not
+Guest) - see donna/bin/README.md. Read-only until that token lands.
+"""
+import json
+import os
+import re
+import sys
+import urllib.error
+import urllib.request
+from pathlib import Path
+
+ENV_FILE = Path.home() / ".notcrawl" / "env"
+API = "https://api.notion.com/v1"
+VERSION = "2022-06-28"
+
+
+def die(msg, code=1):
+    print(f"notiontask: {msg}", file=sys.stderr)
+    sys.exit(code)
+
+
+def load_env():
+    cfg = dict(os.environ)
+    if ENV_FILE.is_file():
+        for line in ENV_FILE.read_text().splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                cfg.setdefault(k.strip(), v.strip())
+    return cfg
+
+
+CFG = load_env()
+TOKEN = CFG.get("NOTION_TOKEN")
+
+
+def norm_id(s):
+    """Accept a bare id, a dashed id, or any Notion URL; return a 32-hex id."""
+    m = re.search(r"([0-9a-fA-F]{32})", s.replace("-", ""))
+    if not m:
+        die(f"cannot find a Notion id in {s!r}")
+    h = m.group(1).lower()
+    return f"{h[:8]}-{h[8:12]}-{h[12:16]}-{h[16:20]}-{h[20:]}"
+
+
+def api(method, path, body=None):
+    if not TOKEN:
+        die("no NOTION_TOKEN (env or ~/.notcrawl/env). Read/write both need a\n"
+            "       Notion token; minting one needs workspace Member, not Guest.", 2)
+    req = urllib.request.Request(API + path, method=method)
+    req.add_header("Authorization", f"Bearer {TOKEN}")
+    req.add_header("Notion-Version", VERSION)
+    if body is not None:
+        req.add_header("Content-Type", "application/json")
+        body = json.dumps(body).encode()
+    try:
+        with urllib.request.urlopen(req, data=body, timeout=30) as r:
+            return json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        detail = ""
+        try:
+            detail = json.loads(e.read()).get("message", "")
+        except Exception:
+            pass
+        die(f"HTTP {e.code}: {detail}")
+    except (urllib.error.URLError, TimeoutError) as e:
+        die(f"network error: {e}")
+
+
+def tasks_db():
+    db = CFG.get("NOTION_TASKS_DB")
+    if not db:
+        die("no NOTION_TASKS_DB set in ~/.notcrawl/env (a task database id or URL)")
+    return norm_id(db)
+
+
+def db_schema():
+    return api("GET", f"/databases/{tasks_db()}")["properties"]
+
+
+def title_of(page):
+    for prop in page.get("properties", {}).values():
+        if prop.get("type") == "title":
+            return "".join(t["plain_text"] for t in prop["title"]) or "(untitled)"
+    return "(untitled)"
+
+
+def render_prop(prop):
+    t = prop.get("type")
+    v = prop.get(t)
+    if t in ("title", "rich_text"):
+        return "".join(x["plain_text"] for x in v)
+    if t == "select":
+        return v["name"] if v else ""
+    if t == "status":
+        return v["name"] if v else ""
+    if t == "multi_select":
+        return ", ".join(x["name"] for x in v)
+    if t == "people":
+        return ", ".join(x.get("name", x["id"]) for x in v)
+    if t == "date":
+        return v["start"] if v else ""
+    if t in ("number", "url", "checkbox"):
+        return str(v) if v is not None else ""
+    return ""
+
+
+def build_prop(schema, name, value):
+    if name not in schema:
+        die(f"unknown property {name!r}. Valid: {', '.join(sorted(schema))}")
+    t = schema[name]["type"]
+    if t == "title":
+        return {"title": [{"text": {"content": value}}]}
+    if t == "rich_text":
+        return {"rich_text": [{"text": {"content": value}}]}
+    if t == "select":
+        return {"select": {"name": value}}
+    if t == "status":
+        return {"status": {"name": value}}
+    if t == "multi_select":
+        return {"multi_select": [{"name": x.strip()} for x in value.split(",") if x.strip()]}
+    if t == "number":
+        return {"number": float(value)}
+    if t == "checkbox":
+        return {"checkbox": value.lower() in ("true", "1", "yes")}
+    if t == "url":
+        return {"url": value}
+    if t == "date":
+        from datetime import date
+        v = date.today().isoformat() if value == "today" else value
+        return {"date": {"start": v}}
+    if t == "people":
+        matches = [u["id"] for u in api("GET", "/users?page_size=100")["results"]
+                   if u.get("name", "").lower() == value.lower()]
+        if not matches:
+            die(f"no workspace user named {value!r}")
+        return {"people": [{"id": matches[0]}]}
+    die(f"property {name!r} has unsupported type {t!r} for writing")
+
+
+def parse_sets(args):
+    out = {}
+    for a in args:
+        if "=" not in a:
+            die(f"--set needs Property=value, got {a!r}")
+        k, v = a.split("=", 1)
+        out[k.strip()] = v.strip()
+    return out
+
+
+def cmd_list(args):
+    status = assignee = None
+    limit = 30
+    it = iter(args)
+    for a in it:
+        if a == "--status":
+            status = next(it)
+        elif a == "--assignee":
+            assignee = next(it)
+        elif a == "--limit":
+            limit = int(next(it))
+    body = {"page_size": min(limit, 100)}
+    filters = []
+    if status:
+        filters.append({"property": "Status", "status": {"equals": status}})
+    if filters:
+        body["filter"] = {"and": filters} if len(filters) > 1 else filters[0]
+    res = api("POST", f"/databases/{tasks_db()}/query", body)
+    for p in res["results"]:
+        props = p["properties"]
+        st = next((render_prop(v) for v in props.values() if v["type"] == "status"), "")
+        who = next((render_prop(v) for v in props.values() if v["type"] == "people"), "")
+        if assignee and assignee.lower() not in who.lower():
+            continue
+        print(f"{p['id'][:8]}  [{st or '-':<12}]  {title_of(p)[:60]:<60}  {who}")
+
+
+def cmd_get(args):
+    if not args:
+        die("get needs a page id or url")
+    p = api("GET", f"/pages/{norm_id(args[0])}")
+    print(f"# {title_of(p)}\n{p['url']}\n")
+    for name, prop in p["properties"].items():
+        val = render_prop(prop)
+        if val:
+            print(f"{name}: {val}")
+
+
+def cmd_create(args):
+    if not args or args[0].startswith("--"):
+        die('create needs a "Title" first')
+    title = args[0]
+    sets = parse_sets(args[2:] if len(args) > 1 and args[1] == "--set" else
+                      [a for a in args[1:] if a != "--set"])
+    schema = db_schema()
+    title_name = next(n for n, s in schema.items() if s["type"] == "title")
+    props = {title_name: build_prop(schema, title_name, title)}
+    for k, v in sets.items():
+        props[k] = build_prop(schema, k, v)
+    r = api("POST", "/pages",
+            {"parent": {"database_id": tasks_db()}, "properties": props})
+    print(f"created {r['id'][:8]}  {title}\n{r['url']}")
+
+
+def cmd_update(args):
+    if not args:
+        die("update needs a page id or url")
+    pid = norm_id(args[0])
+    sets = parse_sets([a for a in args[1:] if a != "--set"])
+    if not sets:
+        die("update needs at least one --set Property=value")
+    schema = db_schema()
+    props = {k: build_prop(schema, k, v) for k, v in sets.items()}
+    api("PATCH", f"/pages/{pid}", {"properties": props})
+    print(f"updated {pid[:8]}: " + ", ".join(f"{k}={v}" for k, v in sets.items()))
+
+
+def cmd_status(args):
+    if len(args) < 2:
+        die('status needs a page and a new status: notiontask status <page> "In Progress"')
+    cmd_update([args[0], f"Status={args[1]}"])
+
+
+def cmd_search(args):
+    if not args:
+        die("search needs a query")
+    limit = 30
+    q = []
+    it = iter(args)
+    for a in it:
+        if a == "--limit":
+            limit = int(next(it))
+        else:
+            q.append(a)
+    res = api("POST", "/search",
+              {"query": " ".join(q), "page_size": min(limit, 100),
+               "filter": {"property": "object", "value": "page"}})
+    for p in res["results"]:
+        if p["object"] == "page":
+            print(f"{p['id'][:8]}  {title_of(p)[:70]}")
+
+
+def cmd_props(args):
+    for name, s in sorted(db_schema().items()):
+        opts = ""
+        t = s["type"]
+        if t in ("select", "status", "multi_select"):
+            opts = " {" + ", ".join(o["name"] for o in s[t]["options"]) + "}"
+        print(f"{name}: {t}{opts}")
+
+
+COMMANDS = {
+    "list": cmd_list, "get": cmd_get, "create": cmd_create,
+    "update": cmd_update, "status": cmd_status, "search": cmd_search,
+    "props": cmd_props,
+}
+
+
+def main(argv):
+    if not argv or argv[0] in ("-h", "--help"):
+        print(__doc__)
+        return 0
+    cmd = argv[0]
+    if cmd not in COMMANDS:
+        die(f"unknown command {cmd!r}. One of: {', '.join(COMMANDS)}")
+    COMMANDS[cmd](argv[1:])
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
