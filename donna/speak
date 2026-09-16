@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# speak - text to speech aloud (kokoro-tts, local, offline)
+#
+# usage: speak <text words...>          say the text
+#        speak <file.txt|epub|pdf>      read a file aloud
+#        echo hi | speak                read stdin
+#        speak -o out.wav <text...>     save to file instead of playing
+#
+# Env: SPEAK_VOICE (default af_sarah), SPEAK_SPEED (default 1.0).
+# Models live in ~/.local/share/kokoro-tts/.
+set -euo pipefail
+
+MODELS="$HOME/.local/share/kokoro-tts"
+VOICE="${SPEAK_VOICE:-af_sarah}"
+SPEED="${SPEAK_SPEED:-1.0}"
+OUT=""
+
+case "${1:-}" in
+  -h|--help) sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  -o) OUT="$2"; shift 2 ;;
+esac
+
+args=("--model" "$MODELS/kokoro-v1.0.onnx" "--voices" "$MODELS/voices-v1.0.bin"
+      "--voice" "$VOICE" "--speed" "$SPEED")
+
+# kokoro-tts spams a spinner on stdout; agents calling speak must not eat
+# that into their context. Silent on success, full output only on failure.
+run() {
+  local log rc=0
+  log="$(mktemp)"
+  kokoro-tts "$@" >"$log" 2>&1 || rc=$?
+  if [[ $rc -ne 0 ]]; then
+    cat "$log" >&2
+  fi
+  rm -f "$log"
+  return $rc
+}
+
+if [[ $# -eq 1 && -f "$1" ]]; then
+  input="$1"
+else
+  input="-"
+fi
+
+if [[ "$input" == "-" && $# -gt 0 ]]; then
+  if [[ -n "$OUT" ]]; then
+    printf '%s\n' "$*" | run /dev/stdin "$OUT" "${args[@]}"
+  else
+    printf '%s\n' "$*" | run /dev/stdin --stream "${args[@]}"
+  fi
+elif [[ -n "$OUT" ]]; then
+  run "$input" "$OUT" "${args[@]}"
+else
+  run "$input" --stream "${args[@]}"
+fi

@@ -1,0 +1,244 @@
+#!/usr/bin/env python3
+"""prepwatch - arm a 30-minute prep brief ahead of every real meeting.
+
+usage: prepwatch [check|apply] [--lead 30m] [--window 18h] [--all] [--json]
+
+Doctrine says nothing meeting-shaped gets walked into cold. That used to mean
+Donna reading the day's calendar and deciding, per meeting, to schedule a ping.
+This does it for her: it reads the spine and her own calendar, and keeps one
+donna-prep-<id> timer armed per meeting, calling meetprep so the brief is built
+at fire time rather than now.
+
+It reconciles rather than fires-and-forgets: a meeting that moves gets its timer
+re-armed, one that is cancelled or declined loses its timer, and meetings
+already inside the lead window are reported rather than silently dropped.
+
+Meeting-shaped means timed, not declined, and having other people in it - a
+solo block on the calendar is work, not a meeting. --all includes those too.
+"""
+import hashlib
+import json
+import os
+import re
+import shlex
+import shutil
+import subprocess
+import sys
+from datetime import datetime, timedelta
+from pathlib import Path
+
+for _d in ("/home/linuxbrew/.linuxbrew/bin", str(Path.home() / ".local/bin"),
+           "/usr/local/bin", "/usr/bin"):
+    if Path(_d).is_dir() and _d not in os.environ.get("PATH", "").split(os.pathsep):
+        os.environ["PATH"] = _d + os.pathsep + os.environ.get("PATH", "")
+
+VAULT = Path(__file__).resolve().parents[2]
+MEETPREP = VAULT / "donna" / "bin" / "meetprep"
+ACCOUNT = "bupddev@gmail.com"
+SPINE = "prasanth@8gears.com"
+OWN = "bupddev@gmail.com"
+PREFIX = "donna-prep-"
+SKIP_TYPES = {"workingLocation", "outOfOffice", "focusTime"}
+DURATION = re.compile(r"^(\d+)([mh])$")
+
+
+def parse_duration(raw, default):
+    if not raw:
+        return default
+    m = DURATION.match(raw.strip())
+    if not m:
+        print(f"prepwatch: bad duration {raw!r} (use 30m or 18h)", file=sys.stderr)
+        sys.exit(2)
+    n, unit = int(m.group(1)), m.group(2)
+    return timedelta(minutes=n) if unit == "m" else timedelta(hours=n)
+
+
+def sctl(*args):
+    return subprocess.run(["systemctl", "--user", *args], capture_output=True, text=True)
+
+
+def gog_events(cal, start, end):
+    gog = shutil.which("gog")
+    if not gog:
+        raise RuntimeError("gog not on PATH")
+    r = subprocess.run(
+        [gog, "calendar", "events", cal, "-a", ACCOUNT, "-j", "--all-pages",
+         "--from", start.strftime("%Y-%m-%dT%H:%M:%S"),
+         "--to", end.strftime("%Y-%m-%dT%H:%M:%S")],
+        capture_output=True, text=True, timeout=60)
+    if r.returncode != 0:
+        raise RuntimeError((r.stderr or r.stdout).strip().splitlines()[0][:100])
+    return json.loads(r.stdout or "{}").get("events") or []
+
+
+def local(stamp):
+    try:
+        dt = datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+    except (ValueError, AttributeError):
+        return None
+    return dt.astimezone().replace(tzinfo=None) if dt.tzinfo else dt
+
+
+def meeting_shaped(ev, include_all):
+    if ev.get("status") == "cancelled" or ev.get("eventType") in SKIP_TYPES:
+        return False
+    if (ev.get("start") or {}).get("date"):
+        return False
+    if any(a.get("self") and a.get("responseStatus") == "declined"
+           for a in ev.get("attendees") or []):
+        return False
+    if include_all:
+        return True
+    # On this calendar the community meetings carry no attendee list at all -
+    # they were subscribed, not invited - and put their join link in location.
+    # So attendees alone would filter out nearly every real meeting. What
+    # actually separates a meeting from a solo block here: someone else
+    # organising it, other people on it, or somewhere to join.
+    others = [a for a in ev.get("attendees") or [] if not a.get("self")]
+    organiser_is_someone_else = not (ev.get("organizer") or {}).get("self", False)
+    joinable = bool(ev.get("hangoutLink") or ev.get("conferenceData") or ev.get("location"))
+    return bool(others) or organiser_is_someone_else or joinable
+
+
+def unit_for(event_id):
+    return PREFIX + hashlib.sha1(event_id.encode()).hexdigest()[:10]
+
+
+def desired(now, lead, window, include_all):
+    wanted, problems, late = {}, [], []
+    for cal in (SPINE, OWN):
+        try:
+            events = gog_events(cal, now, now + window)
+        except Exception as exc:
+            problems.append(f"{cal}: {exc}")
+            continue
+        for ev in events:
+            if not meeting_shaped(ev, include_all):
+                continue
+            start = local((ev.get("start") or {}).get("dateTime"))
+            if not start:
+                continue
+            fire = start - lead
+            summary = (ev.get("summary") or "(no title)").strip()
+            if fire <= now:
+                if start > now:
+                    late.append((start, summary))
+                continue
+            unit = unit_for(ev["id"])
+            cmd = (f"{shlex.quote(str(MEETPREP))} {shlex.quote(cal)} "
+                   f"{shlex.quote(ev['id'])} --expect={start.isoformat(timespec='seconds')}")
+            wanted[unit] = {"unit": unit, "when": fire, "cmd": cmd,
+                            "summary": summary, "start": start}
+    return wanted, problems, late
+
+
+def live():
+    out = {}
+    listing = sctl("list-units", f"{PREFIX}*.timer", "--all", "--plain", "--no-legend").stdout
+    for row in listing.splitlines():
+        name = row.split()[0] if row.split() else ""
+        if not name.endswith(".timer"):
+            continue
+        base = name[: -len(".timer")]
+        if "Transient=yes" not in sctl("show", name, "-p", "Transient").stdout:
+            continue
+        cal = sctl("show", name, "-p", "TimersCalendar").stdout
+        m = re.search(r"OnCalendar=([0-9 :\-]+?)\s*;", cal)
+        when = None
+        if m:
+            try:
+                when = datetime.strptime(m.group(1).strip(), "%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                when = None
+        ec = re.search(r"argv\[\]=\S*bash -c (.*?) ; ignore_errors=",
+                       sctl("show", f"{base}.service", "-p", "ExecStart").stdout, re.S)
+        out[base] = {"when": when, "cmd": ec.group(1).strip() if ec else ""}
+    return out
+
+
+def arm(spec):
+    r = subprocess.run(["systemd-run", "--user",
+                        f"--on-calendar={spec['when']:%Y-%m-%d %H:%M:%S}",
+                        f"--unit={spec['unit']}", "bash", "-c", spec["cmd"]],
+                       capture_output=True, text=True)
+    return r.returncode == 0, (r.stderr.strip().splitlines()[0][:90] if r.returncode else "armed")
+
+
+def disarm(unit):
+    sctl("stop", f"{unit}.timer")
+    sctl("stop", f"{unit}.service")
+    sctl("reset-failed", f"{unit}.timer")
+    sctl("reset-failed", f"{unit}.service")
+    return "ActiveState=active" not in sctl("show", f"{unit}.timer", "-p", "ActiveState").stdout
+
+
+def main(argv):
+    flags = {a for a in argv if a.startswith("--")}
+    args = [a for a in argv if not a.startswith("--")]
+    if "--help" in flags or "-h" in flags:
+        print(__doc__)
+        return 0
+    mode = args[0] if args else "check"
+    if mode not in ("check", "apply"):
+        print(f"prepwatch: unknown mode {mode!r}", file=sys.stderr)
+        return 2
+    lead = parse_duration(next((a.split("=", 1)[1] for a in flags if a.startswith("--lead=")), None),
+                          timedelta(minutes=30))
+    window = parse_duration(next((a.split("=", 1)[1] for a in flags if a.startswith("--window=")), None),
+                            timedelta(hours=18))
+    now = datetime.now()
+
+    wanted, problems, late = desired(now, lead, window, "--all" in flags)
+    current = live()
+    actions = []
+
+    for unit, spec in sorted(wanted.items(), key=lambda kv: kv[1]["when"]):
+        cur = current.get(unit)
+        if not cur:
+            actions.append(("arm", unit, spec["when"], spec["summary"]))
+        elif cur["when"] != spec["when"]:
+            actions.append(("rearm", unit, spec["when"],
+                            f"{spec['summary']} moved to {spec['start']:%H:%M}"))
+        elif cur["cmd"] != spec["cmd"]:
+            actions.append(("rearm", unit, spec["when"], f"{spec['summary']} details changed"))
+
+    for unit, cur in current.items():
+        if unit not in wanted:
+            actions.append(("stop", unit, cur["when"], "meeting gone, cancelled or declined"))
+
+    if problems and not wanted:
+        # Every calendar failed: arming nothing is not the same as "no meetings",
+        # and silently doing nothing would look identical to a quiet day.
+        for p in problems:
+            print(f"FAILED  {p}", file=sys.stderr)
+        return 1
+
+    for kind, unit, when, note in actions:
+        ts = f"{when:%H:%M}" if when else "-"
+        if mode == "apply" and kind in ("arm", "rearm"):
+            if kind == "rearm":
+                disarm(unit)
+            ok, msg = arm(wanted[unit])
+            print(f"{'OK ' if ok else 'FAIL'} {kind:5} {ts} {note[:52]} ({msg})")
+        elif mode == "apply" and kind == "stop":
+            ok = disarm(unit)
+            print(f"{'OK ' if ok else 'FAIL'} stop  {ts} {unit} - {note}")
+        else:
+            print(f"{kind:6} {ts} {note[:60]}")
+
+    for start, summary in late:
+        print(f"late   {start:%H:%M} {summary[:52]} - already inside the {int(lead.total_seconds()//60)}m lead, not armed")
+    for p in problems:
+        print(f"WARN   {p}", file=sys.stderr)
+
+    if "--json" in flags:
+        print(json.dumps({"armed": [u for u in wanted], "actions":
+                          [[k, u, w.isoformat() if w else None, n] for k, u, w, n in actions],
+                          "degraded": problems}, indent=2))
+    if mode == "check" and actions:
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

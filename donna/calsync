@@ -1,0 +1,428 @@
+#!/usr/bin/env python3
+"""calsync - keep systemd donna-* reminder timers in sync with donna/calendar.md
+
+usage: calsync [check|apply|list] [--prune] [--exact] [--file PATH] [--json]
+
+  check   (default) show what would change; exit 1 if calendar and timers drift
+          (a past entry whose service ran clean shows as `fired`, not drift)
+  apply   arm missing timers, re-arm ones whose time moved
+  list    show live donna-* timers only
+
+  --prune   also stop live donna-* timers that no calendar entry claims
+  --exact   also re-arm when the notification text drifts (not just the time)
+
+Calendar entries opt in with an HTML comment on the entry line (invisible in
+Obsidian preview):
+
+  - **18:30 - EOD recap.** prep: done/slipped/tomorrow.
+    <!-- remind unit=eod at=18:30 lead=0 urgency=normal
+         title="EOD" body="recap time - what slipped?" ntfy="EOD recap - what slipped?" -->
+
+live=<composer> makes the timer call a script at fire time instead of carrying
+text frozen hours earlier:
+
+  live=yes / live=prepnote   donna/bin/prepnote - what is next, what is open
+  live=eodrecap              donna/bin/eodrecap - drafts the recap into the
+                             daily note, then nudges
+
+  - **19:05 - EOD recap.**
+    <!-- remind unit=eod at=19:05 live=eodrecap -->
+
+Without a directive, an entry is still picked up if it names a `donna-<slug>`
+unit in backticks and carries an HH:MM time.
+"""
+import argparse
+import json
+import re
+import shlex
+import shutil
+import subprocess
+import sys
+from datetime import datetime, timedelta
+from pathlib import Path
+
+VAULT = Path(__file__).resolve().parents[2]
+CALENDAR = VAULT / "donna" / "calendar.md"
+BIN = VAULT / "donna" / "bin"
+# live=<composer>: which script composes the notification when the timer fires
+COMPOSERS = {
+    "yes": "prepnote", "y": "prepnote", "1": "prepnote", "true": "prepnote",
+    "prepnote": "prepnote", "prep": "prepnote",
+    "eodrecap": "eodrecap", "recap": "eodrecap", "eod": "eodrecap",
+}
+NTFY_TOPIC = "bupd_agents"
+RESERVED = ("donna-prep-",)  # owned by prepwatch, not by calendar.md
+
+DATE_H = re.compile(r"^##\s+(\d{4}-\d{2}-\d{2})\s*$")
+ENTRY = re.compile(r"^\s*[-*]\s+(.*)$")
+DIRECTIVE = re.compile(r"<!--\s*remind\s+(.*?)-->", re.S)
+UNIT_TICK = re.compile(r"`(donna-[a-z0-9][a-z0-9-]*)`")
+TIME_ANY = re.compile(r"\b([01]?\d|2[0-3]):([0-5]\d)\b")
+LEAD = re.compile(r"^(\d+)([mh])$")
+EXEC_CMD = re.compile(r"argv\[\]=\S*bash -c (.*?) ; ignore_errors=", re.S)
+ONCAL = re.compile(r"OnCalendar=([0-9 :\-*]+?)\s*;")
+
+
+def die(msg):
+    print(f"calsync: {msg}", file=sys.stderr)
+    sys.exit(2)
+
+
+def parse_lead(raw):
+    m = LEAD.match(raw.strip())
+    if not m:
+        die(f"bad lead={raw!r} (use 30m or 2h)")
+    n, unit = int(m.group(1)), m.group(2)
+    return timedelta(minutes=n) if unit == "m" else timedelta(hours=n)
+
+
+def unit_name(slug):
+    return slug if slug.startswith("donna-") else f"donna-{slug}"
+
+
+def is_live(cmd):
+    """Name of the composer a command invokes, or None if it carries fixed text."""
+    first = (cmd or "").strip().split(" ", 1)[0].strip("'\"")
+    name = Path(first).name
+    return name if first.startswith(str(BIN)) and name in set(COMPOSERS.values()) else None
+
+
+def tool(name):
+    """Absolute path: systemd user units do not inherit the login PATH, so a
+    bare `ntfy` inside a timer silently does not exist."""
+    return shutil.which(name) or name
+
+
+def build_cmd(title, body, ntfy, urgency, stack):
+    dunst = [tool("dunstify"), "-a", "donna", "-u", urgency]
+    if stack:
+        dunst.append(f"--stack-tag={stack}")
+    dunst += [title, body]
+    parts = [" ".join(shlex.quote(a) for a in dunst)]
+    if ntfy:
+        parts.append(" ".join(shlex.quote(a) for a in [tool("ntfy"), "publish", NTFY_TOPIC, ntfy]))
+    return " && ".join(parts)
+
+
+def entry_title_body(text):
+    """Split a calendar entry line into a notification summary and body."""
+    plain = DIRECTIVE.sub("", text)
+    plain = re.sub(r"\[\[([^\]|]+)\|([^\]]+)\]\]", r"\2", plain)
+    plain = re.sub(r"\[\[([^\]]+)\]\]", r"\1", plain)
+    plain = plain.replace("**", "").replace("`", "").strip()
+    plain = re.sub(r"^\s*([01]?\d|2[0-3]):[0-5]\d\s*[-—:]\s*", "", plain)
+    head, sep, tail = plain.partition(".")
+    title = (head if sep else plain).strip(" -—") or "Reminder"
+    body = tail.strip() or title
+    return title[:80], body[:200]
+
+
+def parse_calendar(path):
+    if not path.exists():
+        die(f"no calendar at {path}")
+    wanted, problems = {}, []
+    date = None
+    lines = path.read_text().splitlines()
+    for i, line in enumerate(lines, 1):
+        h = DATE_H.match(line)
+        if h:
+            date = h.group(1)
+            continue
+        m = ENTRY.match(line)
+        if not m or not date:
+            continue
+        own = m.group(1)   # the entry's own line - the only prose that defines it
+        text = own
+        # a directive may sit on its own indented line under the entry, or wrap
+        # across several; either way it belongs to this entry and stops at the
+        # next list item.
+        for nxt in lines[i:]:
+            if not nxt.strip() or not nxt[:1].isspace():
+                break
+            if nxt.lstrip().startswith(("-", "*", "#")):
+                break
+            text += " " + nxt.strip()
+        d = DIRECTIVE.search(text)
+        if d:
+            try:
+                fields = dict(
+                    kv.split("=", 1) for kv in shlex.split(d.group(1)) if "=" in kv
+                )
+            except ValueError as exc:
+                problems.append(f"{path.name}:{i}: unparsable directive ({exc})")
+                continue
+            if "unit" not in fields or "at" not in fields:
+                problems.append(f"{path.name}:{i}: directive needs unit= and at=")
+                continue
+            at, slug = fields["at"], fields["unit"]
+            title, body = entry_title_body(text)
+            title = fields.get("title", title)
+            body = fields.get("body", body)
+            ntfy = fields.get("ntfy", body)
+            urgency = fields.get("urgency", "normal")
+            lead = parse_lead(fields["lead"]) if fields.get("lead") else timedelta()
+            stack = fields.get("stack")
+            raw_live = fields.get("live", "").strip().lower()
+            live = COMPOSERS.get(raw_live) if raw_live else None
+            if raw_live and not live:
+                problems.append(
+                    f"{path.name}:{i}: unknown live={raw_live!r} "
+                    f"(use one of: {', '.join(sorted(set(COMPOSERS.values())))})")
+                continue
+        else:
+            # Infer from the entry's OWN line only. Notes appended underneath it
+            # - a heal log, a comment about a clash - are prose about the entry,
+            # not a redefinition of it: a time mentioned there must never move
+            # the reminder. Directive entries are immune already, since their
+            # fields are read by name.
+            u = UNIT_TICK.search(own)
+            t = TIME_ANY.search(DIRECTIVE.sub("", own))
+            if not (u and t):
+                continue
+            slug, at = u.group(1), t.group(0)
+            title, body = entry_title_body(own)
+            ntfy, urgency, lead, stack = body, "normal", timedelta(), None
+            live = None
+        try:
+            when = datetime.strptime(f"{date} {at}", "%Y-%m-%d %H:%M") - lead
+        except ValueError:
+            problems.append(f"{path.name}:{i}: bad time {at!r} on {date}")
+            continue
+        name = unit_name(slug)
+        # live entries compose their text when they fire, not now
+        if live:
+            script = BIN / live
+            if not script.exists():
+                problems.append(f"{path.name}:{i}: live={live} but {script} is missing")
+                continue
+            cmd = f"{shlex.quote(str(script))} {shlex.quote(name[len('donna-'):])}"
+        else:
+            cmd = build_cmd(title, body, ntfy, urgency, stack)
+        if name in wanted:
+            problems.append(f"{path.name}:{i}: duplicate unit {name}")
+            continue
+        wanted[name] = {
+            "unit": name,
+            "when": when,
+            "cmd": cmd,
+            "line": i,
+            "source": text.strip()[:110],
+        }
+    return wanted, problems
+
+
+# systemd catalog message IDs: unit started / unit entered failed state
+STARTED_ID = "39f53479d3a045ac8e11786248231fbf"
+FAILED_ID = "d9b373ed55a64feb8242e02dbe79a49c"
+
+
+def fired(unit, when):
+    """Whether a past entry's service actually ran: 'ok', 'failed', or None if
+    the journal has no record. A transient service that exits 0 is collected
+    without trace beyond its Started journal line, so a past entry with no
+    armed timer is the NORMAL end state of a reminder that fired - only the
+    journal can tell it apart from one that never got armed."""
+    r = subprocess.run(
+        ["journalctl", "--user", "-u", f"{unit}.service",
+         "--since", when.strftime("%Y-%m-%d %H:%M:%S"),
+         "-o", "json", "--no-pager"],
+        capture_output=True, text=True)
+    started = failed = False
+    for line in r.stdout.splitlines():
+        try:
+            e = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        msg = e.get("MESSAGE") or ""
+        mid = e.get("MESSAGE_ID", "")
+        if mid == STARTED_ID or msg.startswith("Started"):
+            started = True
+        if mid == FAILED_ID or "Failed with result" in msg:
+            failed = True
+    if not started:
+        return None
+    return "failed" if failed else "ok"
+
+
+def sctl(*args, check=False):
+    return subprocess.run(
+        ["systemctl", "--user", *args], capture_output=True, text=True, check=check
+    )
+
+
+def live_timers():
+    out = sctl("list-units", "donna-*.timer", "--all", "--plain", "--no-legend").stdout
+    live = {}
+    for row in out.splitlines():
+        tname = row.split()[0] if row.split() else ""
+        if not tname.endswith(".timer"):
+            continue
+        base = tname[: -len(".timer")]
+        # Installed units under ~/.config/systemd/user are Donna's plumbing
+        # (drift watch, morning wake), not reminders driven by calendar.md.
+        # Everything calsync arms is transient, so that is the line: never
+        # report or prune a unit this tool did not create.
+        if "Transient=yes" not in sctl("show", tname, "-p", "Transient").stdout:
+            continue
+        # donna-prep-* belongs to prepwatch, which arms it from Google events
+        # rather than calendar.md. Left alone, every one of them would read as
+        # an orphan here and --prune would stop the day's meeting briefs.
+        if base.startswith(RESERVED):
+            continue
+        tshow = sctl("show", tname, "-p", "TimersCalendar").stdout
+        sshow = sctl("show", f"{base}.service", "-p", "ExecStart").stdout
+        oc = ONCAL.search(tshow)
+        ec = EXEC_CMD.search(sshow)
+        when = None
+        if oc:
+            try:
+                when = datetime.strptime(oc.group(1).strip(), "%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                when = None
+        res = sctl("show", f"{base}.service", "-p", "Result").stdout.strip()
+        live[base] = {
+            "unit": base,
+            "when": when,
+            "cmd": ec.group(1).strip() if ec else "",
+            "failed": res.endswith("=exit-code") or res.endswith("=signal"),
+        }
+    return live
+
+
+def arm(spec, dry):
+    stamp = spec["when"].strftime("%Y-%m-%d %H:%M:%S")
+    cmd = [
+        "systemd-run",
+        "--user",
+        f"--on-calendar={stamp}",
+        f"--unit={spec['unit']}",
+        "bash",
+        "-c",
+        spec["cmd"],
+    ]
+    if dry:
+        return True, "would arm"
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    return r.returncode == 0, (r.stderr.strip() or "armed")
+
+
+def disarm(unit, dry):
+    """Stop a donna timer. A transient timer whose service never ran leaves the
+    service unloaded, so success is judged by the timer being gone, not by exit
+    codes."""
+    if dry:
+        return True, "would stop"
+    sctl("stop", f"{unit}.timer")
+    sctl("stop", f"{unit}.service")
+    sctl("reset-failed", f"{unit}.timer")
+    sctl("reset-failed", f"{unit}.service")
+    still = sctl("show", f"{unit}.timer", "-p", "ActiveState").stdout.strip()
+    gone = "ActiveState=active" not in still
+    return gone, ("stopped" if gone else "still active")
+
+
+def main():
+    ap = argparse.ArgumentParser(add_help=False)
+    ap.add_argument("mode", nargs="?", default="check", choices=["check", "apply", "list"])
+    ap.add_argument("--file", default=str(CALENDAR))
+    ap.add_argument("--prune", action="store_true")
+    ap.add_argument("--exact", action="store_true")
+    ap.add_argument("--json", action="store_true")
+    ap.add_argument("-h", "--help", action="store_true")
+    a = ap.parse_args()
+    if a.help:
+        print(__doc__)
+        return 0
+
+    if a.prune and Path(a.file).resolve() != CALENDAR.resolve():
+        die(f"--prune refused: {a.file} is not the real calendar ({CALENDAR}).\n"
+            "       Pruning against a partial file would stop live reminders.")
+
+    live = live_timers()
+    if a.mode == "list":
+        for u, s in sorted(live.items()):
+            when = s["when"].strftime("%Y-%m-%d %H:%M") if s["when"] else "?"
+            print(f"{u:28} {when}  {s['cmd'][:70]}")
+        return 0
+
+    wanted, problems = parse_calendar(Path(a.file))
+    now = datetime.now()
+    dry = a.mode == "check"
+    actions = []
+
+    for unit, spec in sorted(wanted.items(), key=lambda kv: kv[1]["when"]):
+        cur = live.get(unit)
+        if spec["when"] <= now:
+            if not cur:
+                ran = fired(unit, spec["when"])
+                if ran == "ok":
+                    actions.append(("fired", unit, spec["when"], "ran on schedule"))
+                elif ran == "failed":
+                    actions.append(("past", unit, spec["when"],
+                                    f"fired but FAILED - journalctl --user -u {unit}.service"))
+                else:
+                    actions.append(("past", unit, spec["when"], "time already passed - not armed"))
+            continue
+        if not cur:
+            actions.append(("arm", unit, spec["when"], spec["cmd"]))
+        elif cur["when"] != spec["when"]:
+            was = cur["when"].strftime("%H:%M") if cur["when"] else "?"
+            actions.append(("rearm", unit, spec["when"], f"time moved {was} -> {spec['when']:%H:%M}"))
+        elif cur["cmd"] != spec["cmd"]:
+            # Swapping between a frozen-text notify and a fire-time composer (or
+            # between composers) changes what the timer DOES - always re-arm.
+            # Only wording differences between two static notifies are cosmetic.
+            was_live, now_live = is_live(cur["cmd"]), is_live(spec["cmd"])
+            if was_live != now_live or (now_live and was_live):
+                what = (f"{was_live or 'static text'} -> {now_live or 'static text'}")
+                actions.append(("rearm", unit, spec["when"], f"composer changed: {what}"))
+            else:
+                kind = "rearm" if a.exact else "text-drift"
+                actions.append((kind, unit, spec["when"], "notification text differs"))
+
+    for unit, cur in sorted(live.items()):
+        if unit in wanted or not cur["when"]:
+            continue
+        actions.append(("orphan" if not a.prune else "stop", unit, cur["when"], "no calendar entry"))
+
+    changed = 0
+    for kind, unit, when, note in actions:
+        ts = when.strftime("%Y-%m-%d %H:%M") if when else "-"
+        if kind in ("arm", "rearm") and not dry:
+            if kind == "rearm":
+                disarm(unit, False)
+            ok, msg = arm(wanted[unit], False)
+            print(f"{'OK ' if ok else 'FAIL'} {kind:6} {unit:26} {ts}  {msg}")
+            changed += ok
+        elif kind == "stop" and not dry:
+            ok, msg = disarm(unit, False)
+            print(f"{'OK ' if ok else 'FAIL'} stop   {unit:26} {ts}  {msg}")
+            changed += ok
+        else:
+            print(f"{kind:10} {unit:26} {ts}  {note}")
+
+    for unit, cur in sorted(live.items()):
+        if cur.get("failed"):
+            print(f"FAILED {unit:26} last run errored - journalctl --user -u {unit}.service",
+                  file=sys.stderr)
+
+    for p in problems:
+        print(f"WARN  {p}", file=sys.stderr)
+
+    if a.json:
+        print(json.dumps(
+            {"wanted": {u: s["when"].isoformat() for u, s in wanted.items()},
+             "live": {u: (s["when"].isoformat() if s["when"] else None) for u, s in live.items()},
+             "actions": [[k, u, w.isoformat() if w else None, n] for k, u, w, n in actions]},
+            indent=2))
+
+    drifting = [k for k, *_ in actions if k in ("arm", "rearm", "orphan", "past")]
+    if not actions:
+        print("in sync - calendar and timers agree")
+    if dry and drifting:
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

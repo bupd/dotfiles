@@ -1,0 +1,212 @@
+#!/usr/bin/env python3
+"""eodrecap - draft the end-of-day recap into today's note, then nudge.
+
+usage: eodrecap [--dry-run] [--date YYYY-MM-DD] [--no-notify]
+
+Armed by calsync (live=yes on the EOD entry) or run by hand. At fire time it
+reads today's daily note and tracker.md, sorts what closed from what did not,
+pulls the day's real meetings and tomorrow's first commitment off the 8gears
+calendar, and writes a recap DRAFT into the note's "End of Day" section - so
+Donna edits a draft instead of starting from a blank line.
+
+The draft lives between <!-- donna:recap --> markers and is rewritten in place
+on every run. Nothing outside those markers is ever touched, and a line Prasanth
+typed himself is kept, never overwritten.
+"""
+import os
+import re
+import shutil
+import subprocess
+import sys
+from datetime import date, datetime, timedelta
+from pathlib import Path
+
+for _d in ("/home/linuxbrew/.linuxbrew/bin", str(Path.home() / ".local/bin"),
+           "/usr/local/bin", "/usr/bin"):
+    if Path(_d).is_dir() and _d not in os.environ.get("PATH", "").split(os.pathsep):
+        os.environ["PATH"] = _d + os.pathsep + os.environ.get("PATH", "")
+
+VAULT = Path(__file__).resolve().parents[2]
+TRACKER = VAULT / "donna" / "tracker.md"
+SPINE = "prasanth@8gears.com"
+ACCOUNT = "bupddev@gmail.com"
+NTFY_TOPIC = "bupd_agents"
+
+START = "<!-- donna:recap -->"
+END = "<!-- /donna:recap -->"
+EOD_H = re.compile(r"^##\s+End of Day\s*$", re.I)
+HEADING = re.compile(r"^##\s+")
+DONE = re.compile(r"^\s*-\s*\[[xX]\]\s*(.+)$")
+OPEN = re.compile(r"^\s*-\s*\[ \]\s*(.+)$")
+PLACEHOLDER = re.compile(r"^\s*-\s*(Completed|Blocked|Carry forward|Slipped)\s*:\s*$", re.I)
+SKIP_TYPES = {"workingLocation", "outOfOffice", "focusTime"}
+
+
+def clean(text):
+    text = re.sub(r"\[\[([^\]|]+)\|([^\]]+)\]\]", r"\2", text)
+    text = re.sub(r"\[\[([^\]]+)\]\]", r"\1", text)
+    text = re.sub(r"\s+—\s+.*$", "", text)
+    return text.replace("**", "").replace("`", "").strip()
+
+
+def checkboxes(path):
+    done, still_open = [], []
+    if not path.exists():
+        return done, still_open
+    for line in path.read_text().splitlines():
+        if (m := DONE.match(line)):
+            done.append(clean(m.group(1)))
+        elif (m := OPEN.match(line)):
+            still_open.append(clean(m.group(1)))
+    return done, still_open
+
+
+def tracker_done():
+    if not TRACKER.exists():
+        return []
+    out, in_done = [], False
+    for line in TRACKER.read_text().splitlines():
+        if line.startswith("## "):
+            in_done = "done" in line.lower()
+            continue
+        if in_done and line.strip().startswith("-"):
+            text = clean(re.sub(r"^\s*-\s*(\[[ xX]\])?\s*", "", line))
+            if text:
+                out.append(text)
+    return out
+
+
+def gog_events(cal, start, end):
+    gog = shutil.which("gog")
+    if not gog:
+        raise RuntimeError("gog not on PATH")
+    r = subprocess.run(
+        [gog, "calendar", "events", cal, "-a", ACCOUNT, "-j",
+         "--from", start.strftime("%Y-%m-%dT%H:%M:%S"),
+         "--to", end.strftime("%Y-%m-%dT%H:%M:%S")],
+        capture_output=True, text=True, timeout=45,
+    )
+    if r.returncode != 0:
+        raise RuntimeError((r.stderr or r.stdout).strip().splitlines()[0][:80])
+    import json
+    return json.loads(r.stdout or "{}").get("events") or []
+
+
+def timed(events):
+    out = []
+    for ev in events:
+        if ev.get("eventType") in SKIP_TYPES or ev.get("status") == "cancelled":
+            continue
+        stamp = (ev.get("start") or {}).get("dateTime")
+        if not stamp:
+            continue
+        try:
+            dt = datetime.fromisoformat(stamp.replace("Z", "+00:00")).astimezone().replace(tzinfo=None)
+        except ValueError:
+            continue
+        out.append((dt, (ev.get("summary") or "(no title)").strip()))
+    return sorted(out)
+
+
+def build_draft(day, done, still_open, meetings, tomorrow, degraded):
+    carried = still_open[:4]
+    lines = [START]
+    lines.append(f"- Completed: {', '.join(done[:6]) if done else '(nothing ticked yet)'}")
+    lines.append(f"- Slipped: {', '.join(carried) if carried else '(nothing open)'}")
+    if meetings:
+        lines.append(f"- Meetings: {len(meetings)} — " + ", ".join(s for _, s in meetings[:3]))
+    if tomorrow:
+        dt, summary = tomorrow
+        lines.append(f"- Tomorrow starts: {dt:%H:%M} {summary}")
+    lines.append(f"- Carry forward: {', '.join(carried[:3]) if carried else '—'}")
+    if degraded:
+        lines.append(f"- (calendar unreadable: {degraded})")
+    lines.append(f"- Drafted {datetime.now():%H:%M}; edit freely, this block is rewritten on re-run")
+    lines.append(END)
+    return lines
+
+
+def splice(path, draft, dry):
+    """Put the draft inside End of Day, replacing only our own marker block."""
+    text = path.read_text()
+    lines = text.splitlines()
+    if START in text:
+        s = next(i for i, l in enumerate(lines) if l.strip() == START)
+        e = next(i for i, l in enumerate(lines) if l.strip() == END)
+        new = lines[:s] + draft + lines[e + 1:]
+    else:
+        idx = next((i for i, l in enumerate(lines) if EOD_H.match(l)), None)
+        if idx is None:
+            new = lines + ["", "## End of Day"] + draft
+        else:
+            stop = next((j for j in range(idx + 1, len(lines)) if HEADING.match(lines[j])), len(lines))
+            body = lines[idx + 1:stop]
+            kept = [l for l in body if l.strip() and not PLACEHOLDER.match(l)]
+            new = lines[:idx + 1] + draft + (["" ] + kept if kept else []) + lines[stop:]
+    out = "\n".join(new).rstrip() + "\n"
+    out = re.sub(r"^(updated:\s*).*$", rf"\g<1>{datetime.now():%Y-%m-%dT%H:%M}", out, count=1, flags=re.M)
+    if dry:
+        print(out[: out.index(END) + len(END)] if END in out else out)
+        return
+    path.write_text(out)
+
+
+def notify(title, body, dry):
+    if dry:
+        print(f"--- notify ---\n{title}\n{body}")
+        return 0
+    rc = 0
+    for cmd in ([shutil.which("dunstify"), "-a", "donna", "-u", "normal",
+                 "--stack-tag=eod", title, body],
+                [shutil.which("ntfy"), "publish", NTFY_TOPIC, f"{title} — {body}"[:240]]):
+        if not cmd[0]:
+            print("eodrecap: notifier missing from PATH", file=sys.stderr)
+            rc = 1
+            continue
+        r = subprocess.run(cmd, capture_output=True, text=True)
+        if r.returncode != 0:
+            print(f"eodrecap: notify failed: {r.stderr.strip()[:120]}", file=sys.stderr)
+            rc = 1
+    return rc
+
+
+def main(argv):
+    flags = {a for a in argv if a.startswith("--")}
+    if "--help" in flags or "-h" in flags:
+        print(__doc__)
+        return 0
+    dry = "--dry-run" in flags
+    on = next((a.split("=", 1)[1] for a in flags if a.startswith("--date=")), None)
+    day = date.fromisoformat(on) if on else date.today()
+
+    note = VAULT / f"{day.isoformat()}.md"
+    if not note.exists():
+        print(f"eodrecap: no daily note at {note}", file=sys.stderr)
+        return 1
+
+    done, still_open = checkboxes(note)
+    done += [d for d in tracker_done() if d not in done]
+    _, tracker_open = checkboxes(TRACKER)
+    still_open += [o for o in tracker_open if o not in still_open]
+
+    meetings, tomorrow, degraded = [], None, None
+    try:
+        midnight = datetime.combine(day, datetime.min.time())
+        meetings = timed(gog_events(SPINE, midnight, midnight + timedelta(days=1)))
+        nxt = timed(gog_events(SPINE, midnight + timedelta(days=1), midnight + timedelta(days=2)))
+        tomorrow = nxt[0] if nxt else None
+    except Exception as exc:
+        degraded = str(exc)
+
+    draft = build_draft(day, done, still_open, meetings, tomorrow, degraded)
+    splice(note, draft, dry)
+
+    summary = f"{len(done)} done, {len(still_open)} open"
+    body = f"recap drafted in {note.name} — {summary}"
+    if tomorrow:
+        body += f"; tomorrow {tomorrow[0]:%H:%M} {tomorrow[1][:32]}"
+    return notify("EOD", body, dry or "--no-notify" in flags)
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

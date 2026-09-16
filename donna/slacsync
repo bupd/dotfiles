@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# slacsync - mirror Slack history into a local SQLite archive (slacrawl)
+#
+# usage: slacsync              sync + status
+#        slacsync search ...   any slacrawl subcommand, tokens injected
+#
+# Tokens from ~/.config/donna/slack.env (chmod 600):
+#   SLACK_BOT_TOKEN=xoxb-...   required - bot crawl of channels
+#   SLACK_APP_TOKEN=xapp-...   optional - Socket Mode live tail
+#   SLACK_USER_TOKEN=xoxp-...  optional - DMs/MPIMs + full thread coverage
+#
+# Runs every 6h via donna-infra-slacrawl.timer. Exits 0 quietly when the bot
+# token is not set yet, so the timer self-heals the moment it lands.
+set -euo pipefail
+
+ENV_FILE="$HOME/.config/donna/slack.env"
+
+case "${1:-}" in
+  -h|--help) sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+esac
+
+if [[ -r "$ENV_FILE" ]]; then
+  # shellcheck disable=SC1090
+  source "$ENV_FILE"
+fi
+if [[ -z "${SLACK_BOT_TOKEN:-}" ]]; then
+  echo "slacsync: no SLACK_BOT_TOKEN in $ENV_FILE yet - nothing to do"
+  exit 0
+fi
+export SLACK_BOT_TOKEN
+[[ -n "${SLACK_APP_TOKEN:-}" ]] && export SLACK_APP_TOKEN
+[[ -n "${SLACK_USER_TOKEN:-}" ]] && export SLACK_USER_TOKEN
+
+if [[ $# -gt 0 ]]; then
+  exec slacrawl "$@"
+fi
+slacrawl sync
+slacrawl status

@@ -42,6 +42,18 @@ ntfy publish bupd_agents "your message here"
 
 Use for: long-running task completion, CI/build results, blocking questions when the user may be away. Keep messages short and actionable (e.g. `PR 527 CI green - ready to merge`). Do not spam per-step progress — one notification per outcome.
 
+## Voice Output (speak)
+
+To say something aloud on this machine (local kokoro-tts, offline):
+
+```bash
+speak "your message here"          # play on speakers
+speak file.txt                     # read a file aloud (.txt/.epub/.pdf)
+speak -o out.wav "text"            # save instead of playing
+```
+
+Voice/speed via SPEAK_VOICE (default af_sarah) and SPEAK_SPEED env vars. Use for spoken alerts when the user is at the machine but not watching the terminal - pair with ntfy/dunstify for reach. Same restraint as ntfy: one spoken line per outcome, never per-step narration.
+
 ## Neovim PR Review
 
 When the user provides a GitHub PR URL or PR number and wants local Neovim review, use the `neovim-pr-review` skill or run:
@@ -75,3 +87,8 @@ Shared skills live under `~/.agents/skills/<skill-name>/SKILL.md`. Each skill us
 Agents that support skills should index `~/.agents/skills/*/SKILL.md` at session start and autoload a skill when the user's request matches its description. Load only the matching `SKILL.md` first, then load bundled files referenced by that skill as needed.
 
 For Codex, OpenCode, Claude-compatible agents, or custom tools without native skill indexing, use `~/.agents/skills/README.md` and `~/.agents/skills/registry.json` as discovery aids. Do not load every skill body by default.
+
+## Donna — Personal Secretary Agent
+
+Donna is Prasanth's always-on personal secretary agent (own Herdr space `donna`, cwd `~/obsidian`, brief at `~/obsidian/donna/BRIEF.md`) — she runs his second brain, tasks, and day; never code.
+Send her reminders, follow-ups, and outcomes worth logging: Claude-to-Claude via `ListAgents` → `SendMessage` to session `donna`, or `herdr agent prompt donna "<msg>"`. Keep it short and self-contained.

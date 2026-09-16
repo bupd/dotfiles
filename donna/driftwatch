@@ -1,0 +1,139 @@
+#!/usr/bin/env python3
+"""driftwatch - keep calendar.md and the live timers honest between Donna's runs.
+
+usage: driftwatch [--dry-run] [--report-only] [--force]
+
+Runs on a timer. Self-heals the safe half of drift - arming reminders that
+calendar.md asks for and re-arming ones whose time or composer moved - then
+tells Donna about anything it cannot fix on its own: timers with no calendar
+entry behind them (never auto-stopped; pruning is her call) and units whose
+last run errored.
+
+Speaks only when the situation changes. A drift that is still there an hour
+later is not a second notification, and a day where nothing rots is silent.
+"""
+import hashlib
+import json
+import os
+import shutil
+import subprocess
+import sys
+from datetime import datetime
+from pathlib import Path
+
+for _d in ("/home/linuxbrew/.linuxbrew/bin", str(Path.home() / ".local/bin"),
+           "/usr/local/bin", "/usr/bin"):
+    if Path(_d).is_dir() and _d not in os.environ.get("PATH", "").split(os.pathsep):
+        os.environ["PATH"] = _d + os.pathsep + os.environ.get("PATH", "")
+
+VAULT = Path(__file__).resolve().parents[2]
+CALSYNC = VAULT / "donna" / "bin" / "calsync"
+STATE = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "donna"
+STATE_FILE = STATE / "driftwatch.json"
+AGENT = "donna"
+
+
+def run(*args):
+    r = subprocess.run([str(CALSYNC), *args], capture_output=True, text=True, timeout=120)
+    return r.returncode, (r.stdout or "") + (r.stderr or "")
+
+
+def classify(text):
+    healed, stuck = [], []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        if line.startswith(("OK  arm", "OK  rearm", "OK  stop")):
+            healed.append(" ".join(line.split()[1:4]))
+        elif line.startswith(("FAIL ", "FAILED")):
+            stuck.append(line)
+        elif line.startswith(("orphan", "WARN", "past")):
+            stuck.append(line)
+        elif line.split(" ", 1)[0] in ("arm", "rearm"):
+            # report-only mode: drift that exists and has not been healed yet
+            stuck.append(line)
+        elif line.startswith("text-drift"):
+            # never auto-healed (it would overwrite hand-tuned wording) and it
+            # used to vanish here - mention it once, via the signature
+            stuck.append(line + "  [cosmetic - 'calsync apply --exact' to adopt]")
+    return healed, stuck
+
+
+def tell_donna(message, dry):
+    herdr = shutil.which("herdr")
+    if dry or not herdr:
+        print(f"--- would tell {AGENT} ---\n{message}")
+        return bool(herdr)
+    r = subprocess.run([herdr, "agent", "prompt", AGENT, message],
+                       capture_output=True, text=True, timeout=60)
+    if r.returncode != 0:
+        # Donna unreachable is itself worth knowing about - fall back to the desk
+        dunst = shutil.which("dunstify")
+        if dunst:
+            subprocess.run([dunst, "-a", "donna", "-u", "critical",
+                            "--stack-tag=driftwatch",
+                            "Donna unreachable",
+                            f"reminder drift needs her and herdr prompt failed:\n"
+                            f"{r.stderr.strip()[:160]}"], capture_output=True)
+        print(f"driftwatch: herdr prompt failed: {r.stderr.strip()[:160]}", file=sys.stderr)
+        return False
+    return True
+
+
+def main(argv):
+    flags = {a for a in argv if a.startswith("--")}
+    if "--help" in flags or "-h" in flags:
+        print(__doc__)
+        return 0
+    dry = "--dry-run" in flags
+
+    if "--report-only" in flags or dry:
+        _, out = run("check")
+        healed = []
+    else:
+        _, out = run("apply")
+        healed, _ = classify(out)
+    _, stuck = classify(out)
+
+    if not healed and not stuck:
+        return 0
+
+    signature = hashlib.sha1("\n".join(sorted(stuck)).encode()).hexdigest()[:12]
+    STATE.mkdir(parents=True, exist_ok=True)
+    previous = {}
+    if STATE_FILE.exists():
+        try:
+            previous = json.loads(STATE_FILE.read_text())
+        except json.JSONDecodeError:
+            previous = {}
+
+    repeat = previous.get("signature") == signature and not healed
+    if repeat and "--force" not in flags:
+        return 0  # already told her; saying it again is noise
+
+    parts = ["Mike's drift watch."]
+    if healed:
+        parts.append("Healed automatically: " + "; ".join(healed) + ".")
+    if stuck:
+        parts.append("Needs you:\n" + "\n".join(f"  {s}" for s in stuck))
+        if any(s.startswith("orphan") for s in stuck):
+            parts.append("Orphans are timers with no calendar.md entry behind them - "
+                         "either add the entry or run 'donna/bin/calsync apply --prune'. "
+                         "I never auto-prune; stopping a live reminder is your call.")
+        if any(s.startswith(("FAIL", "FAILED")) for s in stuck):
+            parts.append("A FAILED unit means its last run errored - "
+                         "journalctl --user -u <unit>.service has the reason.")
+    message = "\n".join(parts)
+
+    sent = tell_donna(message, dry)
+    if not dry:
+        STATE_FILE.write_text(json.dumps({
+            "signature": signature, "at": datetime.now().isoformat(timespec="seconds"),
+            "healed": healed, "stuck": stuck, "delivered": sent,
+        }, indent=2))
+    return 0 if sent else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

@@ -1,0 +1,7 @@
+[Unit]
+Description=Donna: reconcile calendar.md with live reminder timers
+Documentation=file:///var/home/bupd/obsidian/donna/bin/driftwatch
+
+[Service]
+Type=oneshot
+ExecStart=/var/home/bupd/obsidian/donna/bin/driftwatch

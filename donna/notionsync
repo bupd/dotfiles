@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# notionsync - pull Prasanth's Notion workspace into notcrawl and export markdown
+#
+# usage: notionsync [sync|status|search QUERY...]
+#
+#   sync     (default) API sync, then render markdown to ~/.notcrawl/pages
+#   status   archive counts and last sync time
+#   search   full-text search across synced pages
+#
+# Token: NOTION_TOKEN from the environment, else from ~/.notcrawl/env
+# (a `NOTION_TOKEN=secret_...` line, chmod 600). Mint one at
+# https://www.notion.so/my-integrations (internal integration, read content
+# capability), then share the pages/teamspaces it should see with that
+# integration - the API only returns what has been explicitly shared.
+set -euo pipefail
+
+ENV_FILE="$HOME/.notcrawl/env"
+
+usage() { sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; }
+
+case "${1:-sync}" in
+  -h|--help) usage; exit 0 ;;
+esac
+
+if [[ -z "${NOTION_TOKEN:-}" && -r "$ENV_FILE" ]]; then
+  # shellcheck disable=SC1090
+  source "$ENV_FILE"
+fi
+
+if [[ -z "${NOTION_TOKEN:-}" ]]; then
+  cat >&2 <<EOF
+notionsync: no NOTION_TOKEN.
+
+1. https://www.notion.so/my-integrations -> New integration (internal,
+   read content), copy the secret.
+2. Put it in $ENV_FILE as:  NOTION_TOKEN=secret_xxx   (chmod 600)
+3. In Notion, open each page/teamspace to sync -> ... -> Connections ->
+   add the integration. Unshared pages are invisible to the API.
+4. Run notionsync again.
+EOF
+  exit 2
+fi
+export NOTION_TOKEN
+
+case "${1:-sync}" in
+  sync)
+    notcrawl sync --source api
+    notcrawl export-md
+    notcrawl status
+    ;;
+  status)
+    notcrawl status
+    ;;
+  search)
+    shift
+    [[ $# -gt 0 ]] || { echo "notionsync: search needs a query" >&2; exit 2; }
+    notcrawl search "$@"
+    ;;
+  *)
+    echo "notionsync: unknown command '$1'" >&2
+    usage >&2
+    exit 2
+    ;;
+esac

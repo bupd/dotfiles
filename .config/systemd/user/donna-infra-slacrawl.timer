@@ -1,0 +1,11 @@
+[Unit]
+Description=Donna: Slack history mirror, every 6 hours
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=6h
+AccuracySec=15min
+Unit=donna-infra-slacrawl.service
+
+[Install]
+WantedBy=timers.target

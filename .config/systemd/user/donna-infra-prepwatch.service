@@ -1,0 +1,7 @@
+[Unit]
+Description=Donna: keep a 30-minute prep brief armed before every meeting
+Documentation=file:///var/home/bupd/obsidian/donna/bin/prepwatch
+
+[Service]
+Type=oneshot
+ExecStart=/var/home/bupd/obsidian/donna/bin/prepwatch apply

@@ -1,0 +1,252 @@
+#!/usr/bin/env python3
+"""prepnote - compose a reminder at fire time, not at schedule time.
+
+usage: prepnote <slug> [--dry-run] [--date YYYY-MM-DD]
+
+Timers armed by calsync with `live=yes` call this instead of baking the
+notification text hours in advance. It re-reads donna/calendar.md, tracker.md
+and the live Google calendar the moment it fires, so the ping reflects the
+world as it is now: what is actually next, what is still open, what moved.
+
+Falls back to vault-only content if gog or the network is unavailable - it
+always notifies, and says so when the calendar could not be read.
+"""
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
+
+# systemd user services start with a minimal PATH: brew-installed tools (gog,
+# ntfy) are invisible there, so a timer would half-fire and never say why.
+for _d in ("/home/linuxbrew/.linuxbrew/bin", str(Path.home() / ".local/bin"),
+           "/usr/local/bin", "/usr/bin"):
+    if Path(_d).is_dir() and _d not in os.environ.get("PATH", "").split(os.pathsep):
+        os.environ["PATH"] = _d + os.pathsep + os.environ.get("PATH", "")
+
+VAULT = Path(__file__).resolve().parents[2]
+DONNA = VAULT / "donna"
+CALENDAR = DONNA / "calendar.md"
+TRACKER = DONNA / "tracker.md"
+
+SPINE = "prasanth@8gears.com"        # everything real
+BIRTHDAYS = "bupdprasanth@gmail.com"  # special days only
+ACCOUNT = "bupddev@gmail.com"         # the token we hold
+NTFY_TOPIC = "bupd_agents"
+
+LOOKAHEAD = timedelta(hours=4)
+SKIP_TYPES = {"workingLocation", "outOfOffice", "focusTime"}
+
+DATE_H = re.compile(r"^##\s+(\d{4}-\d{2}-\d{2})\s*$")
+DIRECTIVE = re.compile(r"<!--\s*remind\s+(.*?)-->", re.S)
+UNIT_TICK = re.compile(r"`(donna-[a-z0-9][a-z0-9-]*)`")
+
+
+def continuation(lines, i):
+    """Lines belonging to the list item at `lines[i]`: indented, not a new item."""
+    out = []
+    for nxt in lines[i + 1 :]:
+        if not nxt.strip() or not nxt[:1].isspace():
+            break
+        if nxt.lstrip().startswith(("-", "*", "#")):
+            break
+        out.append(nxt.strip())
+    return out
+
+
+def clean(text):
+    text = DIRECTIVE.sub("", text)
+    text = re.sub(r"\[\[([^\]|]+)\|([^\]]+)\]\]", r"\2", text)
+    text = re.sub(r"\[\[([^\]]+)\]\]", r"\1", text)
+    return text.replace("**", "").replace("`", "").strip(" -—")
+
+
+def find_entry(slug, on):
+    """Return (title, detail) for the calendar entry that owns this unit."""
+    unit = slug if slug.startswith("donna-") else f"donna-{slug}"
+    bare = unit[len("donna-"):]
+    if not CALENDAR.exists():
+        return None, None
+    cur = None
+    lines = CALENDAR.read_text().splitlines()
+    for i, line in enumerate(lines):
+        h = DATE_H.match(line)
+        if h:
+            cur = h.group(1)
+            continue
+        if cur != on or not line.lstrip().startswith(("-", "*")):
+            continue
+        blob = line + " " + " ".join(continuation(lines, i))
+        d = DIRECTIVE.search(blob)
+        owns = (d and re.search(rf"unit=(donna-)?{re.escape(bare)}\b", d.group(1))) or (
+            UNIT_TICK.search(blob) and UNIT_TICK.search(blob).group(1) == unit
+        )
+        if not owns:
+            continue
+        fields = {}
+        if d:
+            import shlex
+            fields = dict(kv.split("=", 1) for kv in shlex.split(d.group(1)) if "=" in kv)
+        text = clean(line.lstrip("-* "))
+        text = re.sub(r"^\s*([01]?\d|2[0-3]):[0-5]\d\s*[-—:]\s*", "", text)
+        head, sep, tail = text.partition(".")
+        return fields.get("title", (head if sep else text).strip()), fields.get(
+            "body", tail.strip()
+        )
+    return None, None
+
+
+def gog_events(cal, start, end):
+    gog = shutil.which("gog")
+    if not gog:
+        raise RuntimeError("gog not on PATH")
+    r = subprocess.run(
+        [gog, "calendar", "events", cal, "-a", ACCOUNT, "-j",
+         "--from", start.strftime("%Y-%m-%dT%H:%M:%S"),
+         "--to", end.strftime("%Y-%m-%dT%H:%M:%S")],
+        capture_output=True, text=True, timeout=45,
+    )
+    if r.returncode != 0:
+        raise RuntimeError((r.stderr or r.stdout).strip().splitlines()[0][:80])
+    return json.loads(r.stdout or "{}").get("events") or []
+
+
+def local(stamp):
+    """Google gives mixed offsets; normalise to this machine's local time."""
+    if not stamp:
+        return None
+    try:
+        dt = datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        return dt
+    return dt.astimezone().replace(tzinfo=None)
+
+
+def upcoming(now):
+    """Real events on the spine calendar, soonest first, all-day ones dropped."""
+    out = []
+    for ev in gog_events(SPINE, now - timedelta(minutes=10), now + LOOKAHEAD):
+        if ev.get("eventType") in SKIP_TYPES or ev.get("status") == "cancelled":
+            continue
+        if (ev.get("start") or {}).get("date"):
+            continue
+        if any(a.get("self") and a.get("responseStatus") == "declined"
+               for a in ev.get("attendees") or []):
+            continue
+        st = local((ev.get("start") or {}).get("dateTime"))
+        if st:
+            out.append((st, (ev.get("summary") or "(no title)").strip()))
+    return sorted(out)
+
+
+def birthdays(today):
+    out = []
+    for ev in gog_events(BIRTHDAYS, datetime.combine(today, datetime.min.time()),
+                         datetime.combine(today, datetime.max.time())):
+        if (ev.get("start") or {}).get("date") == today.isoformat():
+            out.append((ev.get("summary") or "").strip())
+    return [b for b in out if b]
+
+
+def open_urgent(limit=3):
+    if not TRACKER.exists():
+        return [], 0
+    items, urgent, in_urgent = [], [], False
+    for line in TRACKER.read_text().splitlines():
+        if line.startswith("## "):
+            in_urgent = "urgent" in line.lower()
+            continue
+        m = re.match(r"^\s*-\s*\[ \]\s*(.+)$", line)
+        if not m:
+            continue
+        text = clean(m.group(1))
+        text = re.sub(r"\s+—.*$", "", text)
+        items.append(text)
+        if in_urgent:
+            urgent.append(text)
+    picked = (urgent or items)[:limit]
+    return picked, len(items)
+
+
+def notify(title, body, ntfy_text, urgency, stack, dry):
+    dunst = ["dunstify", "-a", "donna", "-u", urgency, f"--stack-tag={stack}", title, body]
+    ntfy = ["ntfy", "publish", NTFY_TOPIC, ntfy_text]
+    if dry:
+        print(f"--- dunstify [{urgency}] ---\n{title}\n{body}\n--- ntfy ---\n{ntfy_text}")
+        return 0
+    rc = 0
+    for cmd in (dunst, ntfy):
+        exe = shutil.which(cmd[0])
+        if not exe:
+            print(f"prepnote: {cmd[0]} not on PATH - channel skipped", file=sys.stderr)
+            rc = 1
+            continue
+        r = subprocess.run([exe, *cmd[1:]], capture_output=True, text=True)
+        if r.returncode != 0:
+            print(f"prepnote: {cmd[0]} failed: {r.stderr.strip()[:120]}", file=sys.stderr)
+            rc = 1
+    return rc
+
+
+def main(argv):
+    args = [a for a in argv if not a.startswith("--")]
+    flags = {a for a in argv if a.startswith("--")}
+    if not args or "--help" in flags or "-h" in flags:
+        print(__doc__)
+        return 0 if flags else 2
+    slug = args[0]
+    dry = "--dry-run" in flags
+    on = next((a.split("=", 1)[1] for a in flags if a.startswith("--date=")), None)
+    today = date.fromisoformat(on) if on else date.today()
+    now = datetime.now()
+
+    title, detail = find_entry(slug, today.isoformat())
+    title = title or slug.replace("donna-", "").replace("-", " ").title()
+
+    lines, degraded = [], None
+    try:
+        nxt = upcoming(now)
+        for st, summary in nxt[:2]:
+            when = st.strftime("%H:%M")
+            mins = round((st - now).total_seconds() / 60)
+            if -10 <= mins <= 0:
+                lead = "now"
+            elif 0 < mins < 60:
+                lead = f"in {mins}m"
+            else:
+                lead = when
+            lines.append(f"{lead} · {summary[:52]}")
+        if not nxt:
+            lines.append("nothing else on the calendar today")
+    except Exception as exc:
+        degraded = str(exc)
+
+    try:
+        for b in birthdays(today)[:2]:
+            lines.append(f"today: {b[:52]}")
+    except Exception:
+        pass
+
+    picked, total = open_urgent()
+    if picked:
+        more = f" (+{total - len(picked)})" if total > len(picked) else ""
+        lines.append("open: " + ", ".join(p[:28] for p in picked) + more)
+
+    if detail:
+        lines.insert(0, detail[:110])
+    if degraded:
+        lines.append(f"[calendar unreadable: {degraded}]")
+
+    body = "\n".join(lines) or "no detail"
+    ntfy_text = f"{title} — " + " | ".join(l for l in lines if not l.startswith("["))
+    urgency = "critical" if degraded and "auth" in degraded.lower() else "normal"
+    return notify(title, body, ntfy_text[:240], urgency, slug, dry)
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

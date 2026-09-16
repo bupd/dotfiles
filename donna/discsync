@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# discsync - mirror Discord server history into a local SQLite archive (discrawl)
+#
+# usage: discsync              init-if-needed, then sync + status
+#        discsync search ...   any discrawl subcommand, token injected
+#
+# Token: the SAME bot token as discordwatch, from ~/.config/donna/discord.env
+# (DISCORD_BOT_TOKEN=). One bot serves both: discordwatch does live voice
+# transcription, discrawl mirrors history for search. The bot only sees
+# channels its role can read - give it View Channel + Read Message History
+# on whatever should be archived.
+#
+# Runs hourly via donna-infra-discrawl.timer. Exits 0 quietly when the token
+# is not set yet, so the timer self-heals the moment it lands.
+set -euo pipefail
+
+ENV_FILE="$HOME/.config/donna/discord.env"
+CONFIG="$HOME/.config/discrawl/config.toml"
+
+case "${1:-}" in
+  -h|--help) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+esac
+
+if [[ -z "${DISCORD_BOT_TOKEN:-}" && -r "$ENV_FILE" ]]; then
+  # shellcheck disable=SC1090
+  source "$ENV_FILE"
+fi
+if [[ -z "${DISCORD_BOT_TOKEN:-}" ]]; then
+  echo "discsync: no DISCORD_BOT_TOKEN in $ENV_FILE yet - nothing to do"
+  exit 0
+fi
+export DISCORD_BOT_TOKEN
+
+if [[ $# -gt 0 ]]; then
+  exec discrawl "$@"
+fi
+
+if [[ ! -f "$CONFIG" ]]; then
+  echo "discsync: first run - discovering guilds"
+  discrawl init
+fi
+discrawl sync
+discrawl status

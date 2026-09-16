@@ -1,0 +1,336 @@
+#!/usr/bin/env python3
+"""discordwatch - Prasanth's Discord voice/text inbox for Donna.
+
+usage: discordwatch [daemon|once|status]
+
+  daemon  (default) poll forever; what donna-infra-discord.service runs
+  once    a single poll pass - for testing
+  status  config, resolved channels, watermark state
+
+Watches Discord channels (and DMs to the bot) for messages from Prasanth.
+Voice messages are downloaded and transcribed locally (ffmpeg -> 16 kHz wav
+-> `hyprwhspr transcribe`, whisper.cpp under the hood); text messages pass
+through as-is. Each handled message is appended to donna/discord-inbox.md,
+handed to Donna via `herdr agent prompt donna`, acknowledged with a
+checkmark reaction, and - for voice - answered with the transcript so
+Prasanth sees what was heard. Transcription failures get a warning reaction.
+
+Config: ~/.config/donna/discord.env (KEY=VALUE lines, chmod 600)
+  DISCORD_BOT_TOKEN=...          bot token from the developer portal
+  DISCORD_CHANNELS=id1,id2       channel IDs to watch (optional)
+  DISCORD_DM_USERS=id1           user IDs whose DMs to the bot to watch
+                                 (optional; needs one shared server)
+  DISCORD_ALLOWED_USERS=id1      only react to these authors (optional;
+                                 default: any human author)
+
+Without a token the daemon idles and rechecks the env file each cycle, so
+the service self-heals the moment the token lands. First sight of a channel
+sets a watermark and skips history - old messages are never replayed.
+"""
+import json
+import os
+import subprocess
+import sys
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+from datetime import datetime
+from pathlib import Path
+
+VAULT = Path(__file__).resolve().parents[2]
+INBOX = VAULT / "donna" / "discord-inbox.md"
+ENV_FILE = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "donna" / "discord.env"
+STATE_DIR = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "donna"
+STATE_FILE = STATE_DIR / "discordwatch.json"
+CACHE = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "donna" / "discord"
+API = "https://discord.com/api/v10"
+AGENT = "donna"
+POLL_SECS = 20
+MAX_AUDIO_BYTES = 50 * 1024 * 1024
+CHECK = "👀"
+WARN = "⚠️"
+
+for _d in ("/home/linuxbrew/.linuxbrew/bin", str(Path.home() / ".local/bin"),
+           "/usr/local/bin", "/usr/bin"):
+    if Path(_d).is_dir() and _d not in os.environ.get("PATH", "").split(os.pathsep):
+        os.environ["PATH"] = _d + os.pathsep + os.environ.get("PATH", "")
+
+
+def log(msg):
+    print(f"discordwatch: {msg}", flush=True)
+
+
+def load_env():
+    cfg = {}
+    if ENV_FILE.is_file():
+        for line in ENV_FILE.read_text().splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                cfg[k.strip()] = v.strip()
+    for k in ("DISCORD_BOT_TOKEN", "DISCORD_CHANNELS", "DISCORD_DM_USERS",
+              "DISCORD_ALLOWED_USERS"):
+        if os.environ.get(k):
+            cfg[k] = os.environ[k]
+    return cfg
+
+
+def csv_ids(raw):
+    return [x.strip() for x in (raw or "").split(",") if x.strip()]
+
+
+def api(token, method, path, body=None):
+    """One Discord REST call. Returns (status, parsed-json-or-None).
+    Waits out a 429 once; other errors are returned, not raised."""
+    for attempt in (1, 2):
+        req = urllib.request.Request(API + path, method=method)
+        req.add_header("Authorization", f"Bot {token}")
+        req.add_header("User-Agent", "donna-discordwatch/1.0")
+        data = None
+        if body is not None:
+            data = json.dumps(body).encode()
+            req.add_header("Content-Type", "application/json")
+        try:
+            with urllib.request.urlopen(req, data=data, timeout=30) as r:
+                raw = r.read()
+                return r.status, (json.loads(raw) if raw.strip() else None)
+        except urllib.error.HTTPError as e:
+            if e.code == 429 and attempt == 1:
+                try:
+                    wait = float(json.loads(e.read()).get("retry_after", 2))
+                except Exception:
+                    wait = 2.0
+                time.sleep(min(wait, 30))
+                continue
+            return e.code, None
+        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as e:
+            log(f"api {method} {path}: {e}")
+            return 0, None
+    return 0, None
+
+
+def download(token, url, dest):
+    req = urllib.request.Request(url)
+    req.add_header("User-Agent", "donna-discordwatch/1.0")
+    try:
+        with urllib.request.urlopen(req, timeout=120) as r, open(dest, "wb") as f:
+            copied = 0
+            while chunk := r.read(1 << 16):
+                copied += len(chunk)
+                if copied > MAX_AUDIO_BYTES:
+                    return False
+                f.write(chunk)
+        return True
+    except (urllib.error.URLError, TimeoutError, OSError) as e:
+        log(f"download failed: {e}")
+        return False
+
+
+def transcribe(audio_path):
+    """ffmpeg to 16 kHz mono wav, then hyprwhspr. Returns text or None.
+    hyprwhspr's launcher routes on argv[1], so `transcribe` must come first
+    and global flags are off the table; the transcript is stdout, noise is
+    stderr."""
+    wav = audio_path.with_suffix(".16k.wav")
+    r = subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(audio_path),
+                        "-ar", "16000", "-ac", "1", str(wav)],
+                       capture_output=True, text=True, timeout=300)
+    if r.returncode != 0:
+        log(f"ffmpeg: {r.stderr.strip()[:200]}")
+        return None
+    try:
+        r = subprocess.run(["hyprwhspr", "transcribe", str(wav)],
+                           capture_output=True, text=True, timeout=600)
+    finally:
+        wav.unlink(missing_ok=True)
+    if r.returncode != 0:
+        log(f"hyprwhspr: {r.stderr.strip()[:200]}")
+        return None
+    text = r.stdout.strip()
+    return text or None
+
+
+def react(token, channel_id, message_id, emoji):
+    e = urllib.parse.quote(emoji)
+    api(token, "PUT", f"/channels/{channel_id}/messages/{message_id}/reactions/{e}/@me")
+
+
+def reply(token, channel_id, message_id, text):
+    api(token, "POST", f"/channels/{channel_id}/messages",
+        {"content": text[:1900], "message_reference": {"message_id": message_id},
+         "allowed_mentions": {"parse": []}})
+
+
+def append_inbox(kind, author, where, text):
+    stamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+    entry = f"\n## {stamp} - {kind} from {author} ({where})\n{text}\n"
+    if not INBOX.exists():
+        INBOX.write_text("# Discord inbox\n\nMachine-written by donna/bin/discordwatch. "
+                         "Newest at the bottom.\n")
+    with open(INBOX, "a") as f:
+        f.write(entry)
+
+
+def prompt_donna(text):
+    r = subprocess.run(["herdr", "agent", "prompt", AGENT, text],
+                       capture_output=True, text=True, timeout=60)
+    if r.returncode != 0:
+        log(f"herdr prompt failed: {r.stderr.strip()[:160]}")
+    return r.returncode == 0
+
+
+def load_state():
+    try:
+        return json.loads(STATE_FILE.read_text())
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def save_state(state):
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    STATE_FILE.write_text(json.dumps(state, indent=2))
+
+
+def resolve_channels(token, cfg, state):
+    """Watched channel ids -> display names. DM channels are created once via
+    the API and cached in state; that needs a server in common with the user."""
+    channels = {cid: f"channel {cid}" for cid in csv_ids(cfg.get("DISCORD_CHANNELS"))}
+    dm_cache = state.setdefault("dm_channels", {})
+    for uid in csv_ids(cfg.get("DISCORD_DM_USERS")):
+        if uid not in dm_cache:
+            status, ch = api(token, "POST", "/users/@me/channels", {"recipient_id": uid})
+            if status == 200 and ch:
+                dm_cache[uid] = ch["id"]
+                log(f"resolved DM channel {ch['id']} for user {uid}")
+            else:
+                log(f"cannot open DM with user {uid} (HTTP {status}) - "
+                    "the bot needs one server in common")
+                continue
+        channels[dm_cache[uid]] = "DM"
+    return channels
+
+
+def handle_message(token, msg, where, allowed, bot_id):
+    author = msg.get("author") or {}
+    if author.get("bot") or author.get("id") == bot_id:
+        return
+    if allowed and author.get("id") not in allowed:
+        return
+    name = author.get("global_name") or author.get("username") or "unknown"
+    cid, mid = msg["channel_id"], msg["id"]
+    pieces = []
+
+    text = (msg.get("content") or "").strip()
+    if text:
+        pieces.append(("text", text))
+
+    for att in msg.get("attachments") or []:
+        ctype = att.get("content_type") or ""
+        if not ctype.startswith("audio/"):
+            continue
+        CACHE.mkdir(parents=True, exist_ok=True)
+        ext = Path(att.get("filename") or "voice.ogg").suffix or ".ogg"
+        audio = CACHE / f"{mid}-{att['id']}{ext}"
+        transcript = None
+        if download(token, att["url"], audio):
+            transcript = transcribe(audio)
+        audio.unlink(missing_ok=True)
+        if transcript:
+            pieces.append(("voice", transcript))
+            reply(token, cid, mid, f"\U0001f4dd {transcript}")
+        else:
+            react(token, cid, mid, WARN)
+            log(f"transcription failed for message {mid}")
+
+    delivered_all = True
+    for kind, body in pieces:
+        append_inbox(kind, name, where, body)
+        label = "voice message, transcribed locally" if kind == "voice" else "typed message"
+        delivered_all &= prompt_donna(
+            f"From Prasanth over Discord ({label}, {where}). Treat it exactly like "
+            f"a message he typed to you:\n{body}")
+    if pieces:
+        react(token, cid, mid, CHECK if delivered_all else WARN)
+    return cid if pieces else None
+
+
+def poll_once(state):
+    cfg = load_env()
+    token = cfg.get("DISCORD_BOT_TOKEN")
+    if not token:
+        return "no token"
+    if state.get("bot_id") is None:
+        status, me = api(token, "GET", "/users/@me")
+        if status != 200 or not me:
+            return f"token rejected (HTTP {status})"
+        state["bot_id"] = me["id"]
+        log(f"bot: {me.get('username')} ({me['id']})")
+    channels = resolve_channels(token, cfg, state)
+    if not channels:
+        return "no channels configured (set DISCORD_CHANNELS or DISCORD_DM_USERS)"
+    allowed = set(csv_ids(cfg.get("DISCORD_ALLOWED_USERS")))
+    marks = state.setdefault("last_seen", {})
+    for cid, where in channels.items():
+        if cid not in marks:
+            # first sight: set the watermark at the newest message, replay nothing
+            status, msgs = api(token, "GET", f"/channels/{cid}/messages?limit=1")
+            if status != 200:
+                log(f"cannot read {where} ({cid}): HTTP {status}")
+                continue
+            marks[cid] = msgs[0]["id"] if msgs else "0"
+            log(f"watching {where} ({cid}) from message {marks[cid]}")
+            continue
+        after = f"&after={marks[cid]}" if marks[cid] != "0" else ""
+        status, msgs = api(token, "GET", f"/channels/{cid}/messages?limit=50{after}")
+        if status != 200 or msgs is None:
+            log(f"poll {where} ({cid}): HTTP {status}")
+            continue
+        for msg in sorted(msgs, key=lambda m: int(m["id"])):
+            handled = handle_message(token, msg, where, allowed, state["bot_id"])
+            if handled:
+                # discordsend replies here by default: answers go back to
+                # wherever Prasanth last spoke from
+                state["last_inbound_channel"] = handled
+            marks[cid] = msg["id"]
+            save_state(state)
+    save_state(state)
+    return None
+
+
+def main(argv):
+    mode = argv[0] if argv else "daemon"
+    if mode in ("-h", "--help", "help"):
+        print(__doc__)
+        return 0
+    state = load_state()
+    if mode == "status":
+        cfg = load_env()
+        print(f"env file : {ENV_FILE} ({'present' if ENV_FILE.is_file() else 'MISSING'})")
+        print(f"token    : {'set' if cfg.get('DISCORD_BOT_TOKEN') else 'MISSING'}")
+        print(f"channels : {cfg.get('DISCORD_CHANNELS') or '-'}")
+        print(f"dm users : {cfg.get('DISCORD_DM_USERS') or '-'}")
+        print(f"allowed  : {cfg.get('DISCORD_ALLOWED_USERS') or 'any human'}")
+        print(f"state    : {json.dumps(state, indent=2)}")
+        return 0
+    if mode == "once":
+        idle = poll_once(state)
+        if idle:
+            log(idle)
+            return 2
+        return 0
+    if mode != "daemon":
+        print(f"discordwatch: unknown mode {mode!r}", file=sys.stderr)
+        print(__doc__, file=sys.stderr)
+        return 2
+    said = None
+    while True:
+        idle = poll_once(state)
+        if idle and idle != said:
+            log(f"{idle} - idling, rechecking every {POLL_SECS}s")
+        said = idle
+        time.sleep(POLL_SECS)
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

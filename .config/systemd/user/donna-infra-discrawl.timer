@@ -1,0 +1,11 @@
+[Unit]
+Description=Donna: Discord history mirror, hourly
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=1h
+AccuracySec=5min
+Unit=donna-infra-discrawl.service
+
+[Install]
+WantedBy=timers.target

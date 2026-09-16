@@ -1,0 +1,110 @@
+#!/usr/bin/env python3
+"""morningwake - wake Donna at day start with the day already composed.
+
+usage: morningwake [--dry-run] [--days N] [--to AGENT]
+
+Her morning sweep used to begin with three calendar calls and a blank note.
+This fires on a timer, builds the merged daysheet for today and tomorrow, and
+hands it to her as the opening message of her day - conflicts, back-to-back
+runs and free blocks already worked out, so she starts from a briefing rather
+than from raw calendar output.
+
+If she cannot be reached, that is not swallowed: the desk gets a critical
+notification saying the sweep did not happen and why.
+"""
+import os
+import shutil
+import subprocess
+import sys
+from datetime import date
+from pathlib import Path
+
+for _d in ("/home/linuxbrew/.linuxbrew/bin", str(Path.home() / ".local/bin"),
+           "/usr/local/bin", "/usr/bin"):
+    if Path(_d).is_dir() and _d not in os.environ.get("PATH", "").split(os.pathsep):
+        os.environ["PATH"] = _d + os.pathsep + os.environ.get("PATH", "")
+
+VAULT = Path(__file__).resolve().parents[2]
+DAYSHEET = VAULT / "donna" / "bin" / "daysheet"
+TRACKERAGE = VAULT / "donna" / "bin" / "trackerage"
+DEFAULT_AGENT = "donna"
+
+
+def sheet(days):
+    r = subprocess.run([str(DAYSHEET), f"--days={days}"],
+                       capture_output=True, text=True, timeout=120)
+    return (r.stdout or "").strip(), (r.stderr or "").strip(), r.returncode
+
+
+def ages():
+    """Tracker staleness, folded into the briefing - degraded to a note if it
+    cannot run, never allowed to sink the whole sweep."""
+    try:
+        r = subprocess.run([str(TRACKERAGE)], capture_output=True, text=True, timeout=60)
+        return (r.stdout or "").strip() if r.returncode == 0 else ""
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+def desk(summary, body, urgency="normal"):
+    dunst = shutil.which("dunstify")
+    if not dunst:
+        return
+    subprocess.run([dunst, "-a", "donna", "-u", urgency,
+                    "--stack-tag=morningwake", summary, body], capture_output=True)
+
+
+def main(argv):
+    flags = {a for a in argv if a.startswith("--")}
+    if "--help" in flags or "-h" in flags:
+        print(__doc__)
+        return 0
+    dry = "--dry-run" in flags
+    days = int(next((a.split("=", 1)[1] for a in flags if a.startswith("--days=")), 2))
+    agent = next((a.split("=", 1)[1] for a in flags if a.startswith("--to=")), DEFAULT_AGENT)
+
+    body, err, rc = sheet(days)
+    degraded = rc != 0 or "### Degraded" in body
+
+    handover = (
+        "Yours from here: pull today's slice into the daily note, timebox the "
+        "untimed work into the free blocks above, and decide the conflicts or "
+        "put them to him. Reminders you schedule go through donna/bin/calsync - "
+        "front-load the time on the entry line."
+    )
+    age_report = ages()
+    parts = [
+        f"Morning. {date.today():%A %d %B} - your sweep, already composed.",
+        body or "(daysheet produced nothing)",
+    ]
+    if age_report:
+        parts.append(age_report)
+    parts.append(handover)
+    message = "\n\n".join(parts)
+    if degraded:
+        message += (f"\n\nHeads up: daysheet ran degraded"
+                    f"{' - ' + err.splitlines()[0][:120] if err else ''}. "
+                    "Some of the day may be missing.")
+
+    if dry:
+        print(message)
+        return 0
+
+    herdr = shutil.which("herdr")
+    if not herdr:
+        desk("Morning sweep failed", "herdr not on PATH - Donna not woken", "critical")
+        print("morningwake: herdr not on PATH", file=sys.stderr)
+        return 1
+
+    r = subprocess.run([herdr, "agent", "prompt", agent, message],
+                       capture_output=True, text=True, timeout=90)
+    if r.returncode != 0:
+        desk("Morning sweep failed",
+             f"could not reach {agent}: {r.stderr.strip()[:140]}", "critical")
+        print(f"morningwake: herdr prompt failed: {r.stderr.strip()[:160]}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

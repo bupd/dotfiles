@@ -1,0 +1,7 @@
+[Unit]
+Description=Donna: morning sweep, composed and handed to her
+Documentation=file:///var/home/bupd/obsidian/donna/bin/morningwake
+
+[Service]
+Type=oneshot
+ExecStart=/var/home/bupd/obsidian/donna/bin/morningwake --days=2

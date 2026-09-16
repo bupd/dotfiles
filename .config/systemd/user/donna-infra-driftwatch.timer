@@ -1,0 +1,11 @@
+[Unit]
+Description=Donna: drift watch every 15 minutes
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=15min
+AccuracySec=1min
+Unit=donna-infra-driftwatch.service
+
+[Install]
+WantedBy=timers.target

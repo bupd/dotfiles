@@ -1,0 +1,11 @@
+[Unit]
+Description=Donna: wake for the morning sweep at 08:30
+
+[Timer]
+OnCalendar=*-*-* 08:30:00
+Persistent=true
+AccuracySec=1min
+Unit=donna-infra-morning.service
+
+[Install]
+WantedBy=timers.target

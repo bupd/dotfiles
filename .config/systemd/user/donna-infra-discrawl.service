@@ -1,0 +1,7 @@
+[Unit]
+Description=Donna: mirror Discord history into local SQLite (discrawl)
+Documentation=file:///var/home/bupd/obsidian/donna/bin/discsync
+
+[Service]
+Type=oneshot
+ExecStart=/var/home/bupd/obsidian/donna/bin/discsync

@@ -1,0 +1,219 @@
+#!/usr/bin/env python3
+"""trackerage - what has been sitting open too long, and what is overdue.
+
+usage: trackerage [--stale-days N] [--urgent-days N] [--json] [--notify]
+                  [--quiet] [--file PATH]
+
+tracker.md is markdown checkboxes with no dates in it, so "open three days"
+means re-reading the whole file by eye. This keeps a first-seen journal: every
+run records which items are open, so an item's age is real elapsed time rather
+than a guess. Where tracker.md is committed, git history backfills a first-seen
+earlier than the journal knows about.
+
+Items carrying `due:YYYY-MM-DD` are checked against today regardless of age.
+Sections about waiting, background, done or people are context, not work, and
+are left out of the counts.
+
+--notify tells Donna, but only when the picture changes; a stale item that was
+stale an hour ago is not news.
+"""
+import hashlib
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+from datetime import date, datetime, timedelta
+from pathlib import Path
+
+for _d in ("/home/linuxbrew/.linuxbrew/bin", str(Path.home() / ".local/bin"),
+           "/usr/local/bin", "/usr/bin"):
+    if Path(_d).is_dir() and _d not in os.environ.get("PATH", "").split(os.pathsep):
+        os.environ["PATH"] = _d + os.pathsep + os.environ.get("PATH", "")
+
+VAULT = Path(__file__).resolve().parents[2]
+TRACKER = VAULT / "donna" / "tracker.md"
+STATE = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "donna"
+STATE_FILE = STATE / "trackerage.json"
+AGENT = "donna"
+
+OPEN = re.compile(r"^\s*-\s*\[ \]\s*(.+?)\s*$")
+DONE = re.compile(r"^\s*-\s*\[[xX]\]\s*(.+?)\s*$")
+HEAD = re.compile(r"^##\s+(.*?)\s*$")
+DUE = re.compile(r"\bdue:(\d{4}-\d{2}-\d{2})\b")
+IGNORE_SECTION = re.compile(r"waiting|background|done|people|archive", re.I)
+URGENT_SECTION = re.compile(r"urgent|security|blocker", re.I)
+
+
+def clean(text):
+    text = re.sub(r"\[\[([^\]|]+)\|([^\]]+)\]\]", r"\2", text)
+    text = re.sub(r"\[\[([^\]]+)\]\]", r"\1", text)
+    return text.replace("**", "").replace("`", "").strip()
+
+
+def key_of(text):
+    return hashlib.sha1(re.sub(r"[^a-z0-9#]+", "", clean(text).lower()).encode()).hexdigest()[:12]
+
+
+def parse(text):
+    """Open items by key, with the section each sits under."""
+    items, section = {}, ""
+    for line in text.splitlines():
+        if (h := HEAD.match(line)):
+            section = h.group(1)
+            continue
+        if IGNORE_SECTION.search(section):
+            continue
+        if (m := OPEN.match(line)):
+            body = clean(m.group(1))
+            items[key_of(body)] = {
+                "text": body,
+                "section": section,
+                "urgent": bool(URGENT_SECTION.search(section)),
+                "due": (d.group(1) if (d := DUE.search(body)) else None),
+            }
+    return items
+
+
+def git_first_seen(path):
+    """Earliest commit in which each open item appears - only if tracked."""
+    rel = str(path.relative_to(VAULT))
+    log = subprocess.run(["git", "-C", str(VAULT), "log", "--format=%H %ct", "--", rel],
+                         capture_output=True, text=True)
+    if log.returncode != 0 or not log.stdout.strip():
+        return {}
+    seen = {}
+    for line in reversed(log.stdout.strip().splitlines()):  # oldest first
+        sha, ts = line.split()[:2]
+        blob = subprocess.run(["git", "-C", str(VAULT), "show", f"{sha}:{rel}"],
+                              capture_output=True, text=True)
+        if blob.returncode != 0:
+            continue
+        for k in parse(blob.stdout):
+            seen.setdefault(k, int(ts))
+    return seen
+
+
+def load_state():
+    if not STATE_FILE.exists():
+        return {}
+    try:
+        return json.loads(STATE_FILE.read_text()).get("items", {})
+    except json.JSONDecodeError:
+        return {}
+
+
+def main(argv):
+    flags = {a for a in argv if a.startswith("--")}
+    if "--help" in flags or "-h" in flags:
+        print(__doc__)
+        return 0
+    stale_days = int(next((a.split("=", 1)[1] for a in flags if a.startswith("--stale-days=")), 3))
+    urgent_days = int(next((a.split("=", 1)[1] for a in flags if a.startswith("--urgent-days=")), 1))
+    path = Path(next((a.split("=", 1)[1] for a in flags if a.startswith("--file=")), TRACKER))
+    if not path.exists():
+        print(f"trackerage: no tracker at {path}", file=sys.stderr)
+        return 2
+
+    now = datetime.now()
+    items = parse(path.read_text())
+    state = load_state()
+    backfill = git_first_seen(path) if path == TRACKER else {}
+
+    rows = []
+    fresh_state = {}
+    for k, it in items.items():
+        prior = state.get(k, {})
+        first = prior.get("first_seen")
+        if backfill.get(k) and (not first or backfill[k] < first):
+            first = backfill[k]
+        if not first:
+            first = int(now.timestamp())
+        fresh_state[k] = {**it, "first_seen": first,
+                          "last_seen": int(now.timestamp())}
+        age_days = (now - datetime.fromtimestamp(first)).days
+        overdue = None
+        if it["due"]:
+            days_over = (date.today() - date.fromisoformat(it["due"])).days
+            if days_over >= 0:
+                overdue = days_over
+        limit = urgent_days if it["urgent"] else stale_days
+        rows.append({**it, "key": k, "age_days": age_days, "overdue_days": overdue,
+                     "stale": age_days >= limit, "limit": limit})
+
+    closed = [v for k, v in state.items() if k not in items]
+
+    if "--json" in flags:
+        print(json.dumps({"generated": now.isoformat(timespec="seconds"),
+                          "open": rows, "closed_since_last_run": len(closed)}, indent=2))
+    elif "--quiet" not in flags:
+        overdue = sorted([r for r in rows if r["overdue_days"] is not None],
+                         key=lambda r: -r["overdue_days"])
+        stale = sorted([r for r in rows if r["stale"] and r["overdue_days"] is None],
+                       key=lambda r: -r["age_days"])
+        print(f"## Tracker age — {len(rows)} open, {len(overdue)} overdue, {len(stale)} stale")
+        for r in overdue:
+            print(f"- OVERDUE {r['overdue_days']}d · {r['text'][:64]} (due {r['due']})")
+        for r in stale:
+            tag = "URGENT" if r["urgent"] else "stale"
+            print(f"- {tag} {r['age_days']}d · {r['text'][:64]} [{r['section'][:28]}]")
+        if not overdue and not stale:
+            oldest = max((r["age_days"] for r in rows), default=0)
+            print(f"- nothing past its limit (oldest open item: {oldest}d)")
+        if closed:
+            print(f"- {len(closed)} item(s) closed since the last run")
+
+    STATE.mkdir(parents=True, exist_ok=True)
+    signature = hashlib.sha1(
+        "|".join(sorted(f"{r['key']}:{r['stale']}:{r['overdue_days']}" for r in rows)).encode()
+    ).hexdigest()[:12]
+    previous_sig = {}
+    if STATE_FILE.exists():
+        try:
+            previous_sig = json.loads(STATE_FILE.read_text())
+        except json.JSONDecodeError:
+            previous_sig = {}
+    # What was last SENT, not what was last seen: a plain report run must not
+    # swallow the change that a later --notify run is supposed to announce.
+    notified = previous_sig.get("notified_signature")
+
+    def save(notified_sig):
+        STATE_FILE.write_text(json.dumps(
+            {"signature": signature, "notified_signature": notified_sig,
+             "at": now.isoformat(timespec="seconds"), "items": fresh_state}, indent=2))
+
+    save(notified)
+
+    if "--notify" in flags:
+        flagged = [r for r in rows if r["stale"] or r["overdue_days"] is not None]
+        if not flagged:
+            save(None)  # nothing outstanding: the next problem is news again
+            return 0
+        if notified == signature:
+            return 0
+        lines = ["Mike's tracker age report."]
+        for r in sorted(flagged, key=lambda r: (-(r["overdue_days"] or 0), -r["age_days"]))[:8]:
+            if r["overdue_days"] is not None:
+                lines.append(f"  OVERDUE {r['overdue_days']}d - {r['text'][:60]} (due {r['due']})")
+            else:
+                lines.append(f"  {r['age_days']}d open - {r['text'][:60]} [{r['section'][:26]}]")
+        lines.append("Urgent-section items are flagged after "
+                     f"{urgent_days}d, everything else after {stale_days}d. "
+                     "Add due:YYYY-MM-DD to an item and it is checked against the date instead.")
+        herdr = shutil.which("herdr")
+        if herdr and "--dry-run" not in flags:
+            r = subprocess.run([herdr, "agent", "prompt", AGENT, "\n".join(lines)],
+                               capture_output=True, text=True, timeout=60)
+            if r.returncode != 0:
+                print(f"trackerage: herdr prompt failed: {r.stderr.strip()[:140]}",
+                      file=sys.stderr)
+                return 1
+        else:
+            print("\n".join(lines))
+        save(signature)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

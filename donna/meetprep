@@ -1,0 +1,172 @@
+#!/usr/bin/env python3
+"""meetprep - the brief for one meeting, built when the reminder fires.
+
+usage: meetprep <calendarId> <eventId> [--expect=ISO8601] [--dry-run]
+
+Armed by prepwatch, 30 minutes ahead of a meeting. It re-fetches that exact
+event at fire time, so a meeting cancelled or moved after the timer was armed
+is caught rather than announced: a cancellation says so and hands back the
+half hour, a move says the new time instead of the old one.
+
+The brief carries who is coming, where it is, and which vault notes mention it
+- doctrine is that he never walks in cold.
+"""
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+from datetime import datetime
+from pathlib import Path
+
+for _d in ("/home/linuxbrew/.linuxbrew/bin", str(Path.home() / ".local/bin"),
+           "/usr/local/bin", "/usr/bin"):
+    if Path(_d).is_dir() and _d not in os.environ.get("PATH", "").split(os.pathsep):
+        os.environ["PATH"] = _d + os.pathsep + os.environ.get("PATH", "")
+
+VAULT = Path(__file__).resolve().parents[2]
+ACCOUNT = "bupddev@gmail.com"
+NTFY_TOPIC = "bupd_agents"
+SKIP_DIRS = {".git", ".jj", ".obsidian", "docs", "Excalidraw", "private", "node_modules"}
+STOPWORDS = {"the", "and", "for", "with", "meeting", "weekly", "biweekly", "sync", "call"}
+
+
+def fetch(cal, event_id):
+    gog = shutil.which("gog")
+    if not gog:
+        raise RuntimeError("gog not on PATH")
+    r = subprocess.run([gog, "calendar", "event", cal, event_id, "-a", ACCOUNT, "-j"],
+                       capture_output=True, text=True, timeout=45)
+    if r.returncode != 0:
+        raise RuntimeError((r.stderr or r.stdout).strip().splitlines()[0][:100])
+    data = json.loads(r.stdout or "{}")
+    return data.get("event") or data
+
+
+def local(stamp):
+    try:
+        dt = datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+    except (ValueError, AttributeError):
+        return None
+    return dt.astimezone().replace(tzinfo=None) if dt.tzinfo else dt
+
+
+def mentions(title):
+    """Vault notes actually about THIS meeting.
+
+    Matching on any shared word turns "Harbor CLI Meeting" into every note that
+    mentions Harbor, which is noise dressed as context. So: the meeting's name
+    as a whole phrase inside a note, or a note whose filename carries it.
+    """
+    phrase = re.sub(r"\s*\([^)]*\)", "", title).strip()
+    if len(phrase) < 6:
+        return []
+    hits = set()
+    rg = shutil.which("rg")
+    if rg:
+        r = subprocess.run([rg, "-l", "-i", "-F", "-g", "*.md", phrase, str(VAULT)],
+                           capture_output=True, text=True, timeout=30)
+        for line in (r.stdout or "").splitlines():
+            p = Path(line)
+            if not any(part in SKIP_DIRS for part in p.parts):
+                hits.add(p.stem)
+    needle = phrase.lower()
+    for p in VAULT.rglob("*.md"):
+        if any(part in SKIP_DIRS for part in p.parts):
+            continue
+        # only filenames that CONTAIN the meeting name; the reverse direction
+        # makes a note called "meeting" match every meeting there is
+        if needle in p.stem.lower():
+            hits.add(p.stem)
+    return sorted(hits)[:3]
+
+
+def notify(title, body, urgency, stack, dry):
+    if dry:
+        print(f"--- dunstify [{urgency}] ---\n{title}\n{body}")
+        return 0
+    rc = 0
+    for cmd in ([shutil.which("dunstify"), "-a", "donna", "-u", urgency,
+                 f"--stack-tag={stack}", title, body],
+                [shutil.which("ntfy"), "publish", NTFY_TOPIC, f"{title} — {body}"[:240]]):
+        if not cmd[0]:
+            print("meetprep: notifier missing from PATH", file=sys.stderr)
+            rc = 1
+            continue
+        r = subprocess.run(cmd, capture_output=True, text=True)
+        if r.returncode != 0:
+            print(f"meetprep: notify failed: {r.stderr.strip()[:120]}", file=sys.stderr)
+            rc = 1
+    return rc
+
+
+def main(argv):
+    flags = {a for a in argv if a.startswith("--")}
+    args = [a for a in argv if not a.startswith("--")]
+    if "--help" in flags or "-h" in flags or len(args) < 2:
+        print(__doc__)
+        return 0 if flags else 2
+    cal, event_id = args[0], args[1]
+    dry = "--dry-run" in flags
+    raw_expect = next((a.split("=", 1)[1] for a in flags if a.startswith("--expect=")), None)
+    try:
+        expect = datetime.fromisoformat(raw_expect) if raw_expect else None
+    except ValueError:
+        expect = None
+    stack = f"prep-{event_id[:12]}"
+
+    try:
+        ev = fetch(cal, event_id)
+    except Exception as exc:
+        return notify("Meeting in 30", f"could not re-read the event: {exc}",
+                      "normal", stack, dry)
+
+    summary = (ev.get("summary") or "(no title)").strip()
+    if ev.get("status") == "cancelled":
+        return notify(f"Cancelled: {summary[:40]}",
+                      "it was on for the next half hour - that time is yours again",
+                      "normal", stack, dry)
+    if any(a.get("self") and a.get("responseStatus") == "declined"
+           for a in ev.get("attendees") or []):
+        return notify(f"Declined: {summary[:40]}", "no prep needed, you are out",
+                      "low", stack, dry)
+
+    start = local((ev.get("start") or {}).get("dateTime"))
+    now = datetime.now()
+    lines = []
+    if start:
+        mins = round((start - now).total_seconds() / 60)
+        when = f"{start:%H:%M}"
+        lines.append(f"starts {when}" + (f" · in {mins}m" if 0 < mins < 180 else ""))
+        # Movement is only knowable against the time prepwatch armed for. Judging
+        # it from "how far away is it now" would cry wolf on any manual run.
+        if expect and abs((start - expect).total_seconds()) > 300:
+            lines.append(f"MOVED - was {expect:%H:%M} when this was scheduled")
+
+    attendees = [a for a in ev.get("attendees") or [] if not a.get("self")]
+    if attendees:
+        names = [(a.get("displayName") or a.get("email") or "").split("@")[0]
+                 for a in attendees if not a.get("resource")]
+        accepted = sum(1 for a in attendees if a.get("responseStatus") == "accepted")
+        lines.append(f"{len(attendees)} others ({accepted} yes): " + ", ".join(names[:4]))
+
+    where = ev.get("hangoutLink") or ev.get("location") or ""
+    if where:
+        lines.append(where[:70])
+
+    desc = re.sub(r"<[^>]+>", " ", ev.get("description") or "")
+    desc = re.sub(r"\s+", " ", desc).strip()
+    if desc:
+        lines.append(f"agenda: {desc[:90]}")
+
+    notes = mentions(summary)
+    if notes:
+        lines.append("your notes: " + ", ".join(notes))
+
+    return notify(f"30 min: {summary[:44]}", "\n".join(lines) or "no detail",
+                  "normal", stack, dry)
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

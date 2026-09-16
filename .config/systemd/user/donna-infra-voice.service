@@ -1,0 +1,12 @@
+[Unit]
+Description=Donna: voice-channel presence in agents-vc (discordvoice)
+Documentation=file:///var/home/bupd/obsidian/donna/bin/discordvoice
+After=network-online.target
+
+[Service]
+ExecStart=/var/home/bupd/obsidian/donna/bin/discordvoice
+Restart=on-failure
+RestartSec=15
+
+[Install]
+WantedBy=default.target

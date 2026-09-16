@@ -1,0 +1,7 @@
+[Unit]
+Description=Donna: mirror Slack history into local SQLite (slacrawl)
+Documentation=file:///var/home/bupd/obsidian/donna/bin/slacsync
+
+[Service]
+Type=oneshot
+ExecStart=/var/home/bupd/obsidian/donna/bin/slacsync

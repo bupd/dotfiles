@@ -1,0 +1,272 @@
+#!/home/bupd/.local/share/donna-voice/venv/bin/python
+"""discordvoice - Donna's ears and mouth in the agents-vc voice channel.
+
+usage: discordvoice [--help]   (daemon; donna-infra-voice.service runs it)
+
+Joins the voice channel (DISCORD_VOICE_CHANNEL) whenever a human is in it,
+leaves when it empties. Everything said is captured per speaker, cut into
+utterances on ~1s of silence, transcribed locally (ffmpeg -> 16k wav ->
+hyprwhspr), logged to donna/discord-inbox.md and handed to Donna via
+`herdr agent prompt`. Donna talks back with `vcsay "text"` - synthesized by
+kokoro (speak -o) and played into the channel; drop-in files in the spool
+directory ~/.local/state/donna/vc-say/ are picked up oldest-first.
+
+Config: ~/.config/donna/discord.env (same file as discordwatch):
+  DISCORD_BOT_TOKEN, DISCORD_VOICE_CHANNEL (id), DISCORD_ALLOWED_USERS
+Idles without a token or channel and rechecks every 20s, so the service
+self-heals when config lands.
+"""
+import asyncio
+import os
+import subprocess
+import sys
+import tempfile
+import threading
+import time
+from datetime import datetime
+from pathlib import Path
+
+import discord
+
+ENV_FILE = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "donna" / "discord.env"
+STATE_DIR = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "donna"
+SPOOL = STATE_DIR / "vc-say"
+VAULT = Path(__file__).resolve().parents[2]
+INBOX = VAULT / "donna" / "discord-inbox.md"
+BIN = VAULT / "donna" / "bin"
+AGENT = "donna"
+
+SILENCE_CUT = 1.0      # seconds of silence that ends an utterance
+MIN_UTTER = 0.4        # shorter than this is a cough, not speech
+MAX_UTTER = 90.0       # hard cap so a monologue still flushes
+PCM_RATE = 48000 * 2 * 2  # bytes/sec: 48kHz stereo s16le
+
+for _d in ("/home/linuxbrew/.linuxbrew/bin", str(Path.home() / ".local/bin"),
+           "/usr/local/bin", "/usr/bin"):
+    if Path(_d).is_dir() and _d not in os.environ.get("PATH", "").split(os.pathsep):
+        os.environ["PATH"] = _d + os.pathsep + os.environ.get("PATH", "")
+
+
+def log(msg):
+    print(f"discordvoice: {msg}", flush=True)
+
+
+def load_env():
+    cfg = {}
+    if ENV_FILE.is_file():
+        for line in ENV_FILE.read_text().splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                cfg[k.strip()] = v.strip()
+    return cfg
+
+
+def transcribe_pcm(pcm: bytes):
+    """48k stereo s16le bytes -> text, or None."""
+    with tempfile.TemporaryDirectory(prefix="dvc-") as td:
+        wav = Path(td) / "seg.wav"
+        r = subprocess.run(
+            ["ffmpeg", "-y", "-loglevel", "error", "-f", "s16le", "-ar", "48000",
+             "-ac", "2", "-i", "-", "-ar", "16000", "-ac", "1", str(wav)],
+            input=pcm, capture_output=True, timeout=120)
+        if r.returncode != 0:
+            log(f"ffmpeg: {r.stderr.decode(errors='replace')[:200]}")
+            return None
+        r = subprocess.run(["hyprwhspr", "transcribe", str(wav)],
+                           capture_output=True, text=True, timeout=600)
+    if r.returncode != 0:
+        log(f"hyprwhspr: {r.stderr.strip()[:200]}")
+        return None
+    text = r.stdout.strip()
+    if not text or len(text.strip(".,!? ")) < 2 or "BLANK_AUDIO" in text:
+        return None
+    return text
+
+
+def append_inbox(author, text):
+    stamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+    with open(INBOX, "a") as f:
+        f.write(f"\n## {stamp} - voice-channel from {author} (agents-vc)\n{text}\n")
+
+
+def prompt_donna(author, text):
+    r = subprocess.run(
+        ["herdr", "agent", "prompt", AGENT,
+         f"From {author} live in the agents-vc voice channel (transcribed). "
+         f"Answer OUT LOUD with donna/bin/vcsay \"...\" - keep it short and spoken-style, "
+         f"he is listening, not reading:\n{text}"],
+        capture_output=True, text=True, timeout=60)
+    if r.returncode != 0:
+        log(f"herdr prompt failed: {r.stderr.strip()[:160]}")
+    return r.returncode == 0
+
+
+class StreamSink(discord.sinks.Sink):
+    """Continuous sink: buffers PCM per user, flushes an utterance after
+    SILENCE_CUT seconds of quiet (or MAX_UTTER of monologue)."""
+
+    def __init__(self, on_utterance):
+        super().__init__()
+        self.on_utterance = on_utterance
+        self.buffers = {}
+        self.last = {}
+        self.lock = threading.Lock()
+
+    def write(self, data, user):
+        with self.lock:
+            self.buffers.setdefault(user, bytearray()).extend(data)
+            self.last[user] = time.monotonic()
+            if len(self.buffers[user]) > MAX_UTTER * PCM_RATE:
+                self._flush(user)
+
+    def reap(self):
+        now = time.monotonic()
+        with self.lock:
+            for user in list(self.buffers):
+                if now - self.last.get(user, now) >= SILENCE_CUT:
+                    self._flush(user)
+
+    def _flush(self, user):
+        pcm = bytes(self.buffers.pop(user, b""))
+        self.last.pop(user, None)
+        if len(pcm) >= MIN_UTTER * PCM_RATE:
+            self.on_utterance(user, pcm)
+
+    def cleanup(self):
+        with self.lock:
+            self.buffers.clear()
+            self.last.clear()
+
+
+class DonnaVoice(discord.Client):
+    def __init__(self, cfg):
+        intents = discord.Intents.default()
+        super().__init__(intents=intents)
+        self.cfg = cfg
+        self.channel_id = int(cfg["DISCORD_VOICE_CHANNEL"])
+        self.allowed = {u.strip() for u in cfg.get("DISCORD_ALLOWED_USERS", "").split(",") if u.strip()}
+        self.vc = None
+        self.work_q = None
+        self.play_lock = asyncio.Lock()
+
+    async def on_ready(self):
+        log(f"connected as {self.user} ({self.user.id})")
+        self.work_q = asyncio.Queue()
+        asyncio.create_task(self.transcriber())
+        asyncio.create_task(self.spool_player())
+        asyncio.create_task(self.housekeeper())
+        await self.reconcile()
+
+    def humans_in_channel(self, ch):
+        return [m for m in ch.members if not m.bot]
+
+    async def reconcile(self):
+        ch = self.get_channel(self.channel_id)
+        if ch is None:
+            log(f"voice channel {self.channel_id} not visible to the bot")
+            return
+        humans = self.humans_in_channel(ch)
+        if humans and (self.vc is None or not self.vc.is_connected()):
+            try:
+                self.vc = await ch.connect()
+            except discord.ClientException:
+                return
+            sink = StreamSink(self.enqueue_utterance)
+            self.vc.start_recording(sink, self.recording_done)
+            self.sink = sink
+            log(f"joined {ch.name}: {', '.join(m.display_name for m in humans)}")
+        elif not humans and self.vc is not None and self.vc.is_connected():
+            try:
+                self.vc.stop_recording()
+            except Exception:
+                pass
+            await self.vc.disconnect(force=True)
+            self.vc = None
+            log(f"left {ch.name}: empty")
+
+    async def recording_done(self, sink, *a):
+        pass
+
+    async def on_voice_state_update(self, member, before, after):
+        if member.id == self.user.id:
+            return
+        await self.reconcile()
+
+    def enqueue_utterance(self, user, pcm):
+        member = None
+        ch = self.get_channel(self.channel_id)
+        if ch is not None:
+            member = discord.utils.get(ch.members, id=user)
+        if member is not None and member.bot:
+            return
+        if self.allowed and str(user) not in self.allowed:
+            return
+        name = member.display_name if member else str(user)
+        self.loop.call_soon_threadsafe(self.work_q.put_nowait, (name, pcm))
+
+    async def transcriber(self):
+        while True:
+            name, pcm = await self.work_q.get()
+            text = await asyncio.to_thread(transcribe_pcm, pcm)
+            if text:
+                log(f"{name}: {text[:120]}")
+                await asyncio.to_thread(append_inbox, name, text)
+                await asyncio.to_thread(prompt_donna, name, text)
+
+    async def spool_player(self):
+        SPOOL.mkdir(parents=True, exist_ok=True)
+        while True:
+            await asyncio.sleep(0.5)
+            if self.vc is None or not self.vc.is_connected():
+                continue
+            files = sorted(SPOOL.glob("*.txt"))
+            if not files:
+                continue
+            f = files[0]
+            try:
+                text = f.read_text().strip()
+            finally:
+                f.unlink(missing_ok=True)
+            if not text:
+                continue
+            async with self.play_lock:
+                wav = Path(tempfile.mkdtemp(prefix="dvc-say-")) / "say.wav"
+                r = await asyncio.to_thread(
+                    subprocess.run, [str(BIN / "speak"), "-o", str(wav), text],
+                    capture_output=True, text=True, timeout=300)
+                if r.returncode != 0 or not wav.exists():
+                    log(f"tts failed: {(r.stderr or '').strip()[:160]}")
+                    continue
+                done = asyncio.Event()
+                self.vc.play(discord.FFmpegPCMAudio(str(wav)),
+                             after=lambda e: self.loop.call_soon_threadsafe(done.set))
+                await done.wait()
+                wav.unlink(missing_ok=True)
+                log(f"spoke: {text[:100]}")
+
+    async def housekeeper(self):
+        while True:
+            await asyncio.sleep(0.3)
+            if getattr(self, "sink", None) and self.vc and self.vc.is_connected():
+                await asyncio.to_thread(self.sink.reap)
+
+
+def main(argv):
+    if argv and argv[0] in ("-h", "--help"):
+        print(__doc__)
+        return 0
+    while True:
+        cfg = load_env()
+        if cfg.get("DISCORD_BOT_TOKEN") and cfg.get("DISCORD_VOICE_CHANNEL"):
+            break
+        log("waiting for DISCORD_BOT_TOKEN + DISCORD_VOICE_CHANNEL in "
+            f"{ENV_FILE} - rechecking in 20s")
+        time.sleep(20)
+    client = DonnaVoice(cfg)
+    client.run(cfg["DISCORD_BOT_TOKEN"])
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

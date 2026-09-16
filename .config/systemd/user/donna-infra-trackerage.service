@@ -1,0 +1,7 @@
+[Unit]
+Description=Donna: flag tracker items that have gone stale or overdue
+Documentation=file:///var/home/bupd/obsidian/donna/bin/trackerage
+
+[Service]
+Type=oneshot
+ExecStart=/var/home/bupd/obsidian/donna/bin/trackerage --notify --quiet

@@ -43,3 +43,6 @@ state.yml
 # identity-backup output archives contain private keys — never commit (public repo)
 identity-backup/*.zip
 identity-backup/.*.partial.zip
+
+# Donna machinery - live env files carry tokens (public repo!)
+.config/donna/*.env

@@ -1,0 +1,11 @@
+[Unit]
+Description=Donna: tracker staleness check, mid-afternoon
+
+[Timer]
+OnCalendar=*-*-* 14:00:00
+Persistent=true
+AccuracySec=5min
+Unit=donna-infra-trackerage.service
+
+[Install]
+WantedBy=timers.target

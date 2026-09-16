@@ -1,0 +1,304 @@
+#!/usr/bin/env python3
+"""daysheet - one merged view of the day: Google calendars + calendar.md.
+
+usage: daysheet [--date YYYY-MM-DD] [--days N] [--json] [--quiet]
+
+Doctrine (2026-09-15, from Prasanth):
+  prasanth@8gears.com    the spine - every real commitment: meetings, family,
+                         travel, work. Read in full.
+  bupdprasanth@gmail.com birthdays / special days ONLY. Everything else on that
+                         calendar is ignored on purpose, readable or not.
+  bupddev@gmail.com      Donna's own scaffolding - prep blocks, reminder slots.
+  donna/calendar.md      vault-side truth; anything here without a matching
+                         Google event is surfaced as vault-only.
+
+Merges all of it into one timeline, then does the part that costs eyeball time:
+flags overlapping commitments, back-to-back runs with no gap, and the free
+blocks big enough to actually use. --json emits the whole structure for the
+morning sweep instead of shelling out three times and eyeballing the diff.
+"""
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+from datetime import date, datetime, time, timedelta
+from pathlib import Path
+
+for _d in ("/home/linuxbrew/.linuxbrew/bin", str(Path.home() / ".local/bin"),
+           "/usr/local/bin", "/usr/bin"):
+    if Path(_d).is_dir() and _d not in os.environ.get("PATH", "").split(os.pathsep):
+        os.environ["PATH"] = _d + os.pathsep + os.environ.get("PATH", "")
+
+VAULT = Path(__file__).resolve().parents[2]
+CALENDAR = VAULT / "donna" / "calendar.md"
+ACCOUNT = "bupddev@gmail.com"
+
+SPINE = "prasanth@8gears.com"
+SPECIAL = "bupdprasanth@gmail.com"
+OWN = "bupddev@gmail.com"
+
+SKIP_TYPES = {"workingLocation", "outOfOffice", "focusTime"}
+BIRTHDAY_HINT = re.compile(r"birthday|anniversar|b'?day", re.I)
+DAY_START, DAY_END = time(9, 0), time(19, 30)
+USEFUL_GAP = timedelta(minutes=90)
+TIGHT = timedelta(minutes=10)
+
+DATE_H = re.compile(r"^##\s+(\d{4}-\d{2}-\d{2})\s*$")
+ENTRY = re.compile(r"^\s*[-*]\s+(.*)$")
+DIRECTIVE = re.compile(r"<!--\s*remind\s+(.*?)-->", re.S)
+RANGE = re.compile(r"\b([01]?\d|2[0-3]):([0-5]\d)\s*[-–—]\s*([01]?\d|2[0-3]):([0-5]\d)\b")
+SINGLE = re.compile(r"\b([01]?\d|2[0-3]):([0-5]\d)\b")
+# an entry's own time leads the line; times later in the prose describe
+# something else (a clash it was moved away from, a meeting it refers to)
+LEAD_RANGE = re.compile(r"^\s*(?:\*\*)?([01]?\d|2[0-3]):([0-5]\d)\s*[-–—]\s*([01]?\d|2[0-3]):([0-5]\d)")
+LEAD_SINGLE = re.compile(r"^\s*(?:\*\*)?([01]?\d|2[0-3]):([0-5]\d)")
+AT_FIELD = re.compile(r"\bat=([01]?\d|2[0-3]):([0-5]\d)\b")
+
+
+def clean(text):
+    text = DIRECTIVE.sub("", text)
+    text = re.sub(r"\[\[([^\]|]+)\|([^\]]+)\]\]", r"\2", text)
+    text = re.sub(r"\[\[([^\]]+)\]\]", r"\1", text)
+    text = re.sub(r"\s*Source:.*$", "", text, flags=re.I)
+    return text.replace("**", "").replace("`", "").strip(" -—.")
+
+
+def gog_events(cal, start, end):
+    gog = shutil.which("gog")
+    if not gog:
+        raise RuntimeError("gog not on PATH")
+    r = subprocess.run(
+        [gog, "calendar", "events", cal, "-a", ACCOUNT, "-j", "--all-pages",
+         "--from", start.strftime("%Y-%m-%dT%H:%M:%S"),
+         "--to", end.strftime("%Y-%m-%dT%H:%M:%S")],
+        capture_output=True, text=True, timeout=60,
+    )
+    if r.returncode != 0:
+        raise RuntimeError((r.stderr or r.stdout).strip().splitlines()[0][:100])
+    return json.loads(r.stdout or "{}").get("events") or []
+
+
+def local(stamp):
+    try:
+        dt = datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+    except (ValueError, AttributeError):
+        return None
+    return dt.astimezone().replace(tzinfo=None) if dt.tzinfo else dt
+
+
+def declined(ev):
+    return any(a.get("self") and a.get("responseStatus") == "declined"
+               for a in ev.get("attendees") or [])
+
+
+def collect(cal, source, day, span, birthdays_only=False):
+    out = []
+    midnight = datetime.combine(day, time.min)
+    for ev in gog_events(cal, midnight, midnight + timedelta(days=span)):
+        if ev.get("status") == "cancelled" or declined(ev):
+            continue
+        summary = (ev.get("summary") or "(no title)").strip()
+        start_d = (ev.get("start") or {}).get("date")
+        if birthdays_only and not BIRTHDAY_HINT.search(summary):
+            continue
+        if ev.get("eventType") in SKIP_TYPES:
+            continue
+        if start_d:  # all-day
+            out.append({"source": source, "summary": summary, "all_day": True,
+                        "day": start_d, "start": None, "end": None,
+                        "link": ev.get("htmlLink")})
+            continue
+        st = local((ev.get("start") or {}).get("dateTime"))
+        en = local((ev.get("end") or {}).get("dateTime")) or st
+        if st:
+            out.append({"source": source, "summary": summary, "all_day": False,
+                        "day": st.date().isoformat(), "start": st, "end": en,
+                        "link": ev.get("htmlLink")})
+    return out
+
+
+def vault_entries(days):
+    """Timed and untimed lines from calendar.md for the days in range."""
+    if not CALENDAR.exists():
+        return []
+    out, cur = [], None
+    raw_lines = CALENDAR.read_text().splitlines()
+    for idx, line in enumerate(raw_lines):
+        # fold an entry's continuation lines (the directive lives there) back in
+        if ENTRY.match(line):
+            for nxt in raw_lines[idx + 1:]:
+                if not nxt.strip() or not nxt[:1].isspace():
+                    break
+                if nxt.lstrip().startswith(("-", "*", "#")):
+                    break
+                line += " " + nxt.strip()
+        h = DATE_H.match(line)
+        if h:
+            cur = h.group(1)
+            continue
+        m = ENTRY.match(line)
+        if not m or cur not in days:
+            continue
+        raw = m.group(1)
+        text = clean(raw)
+        if not text:
+            continue
+        day = date.fromisoformat(cur)
+        d = DIRECTIVE.search(raw)
+        at = AT_FIELD.search(d.group(1)) if d else None
+        r = LEAD_RANGE.search(text) or (None if LEAD_SINGLE.search(text) else RANGE.search(text))
+        lead = LEAD_SINGLE.search(text)
+        if at:
+            st = datetime.combine(day, time(int(at.group(1)), int(at.group(2))))
+            en = st + timedelta(minutes=30)
+        elif r:
+            st = datetime.combine(day, time(int(r.group(1)), int(r.group(2))))
+            en = datetime.combine(day, time(int(r.group(3)), int(r.group(4))))
+        elif lead:
+            st = datetime.combine(day, time(int(lead.group(1)), int(lead.group(2))))
+            en = st + timedelta(minutes=30)
+        else:
+            out.append({"source": "vault", "summary": text, "all_day": False,
+                        "day": cur, "start": None, "end": None, "untimed": True})
+            continue
+        label = re.sub(r"^\s*([01]?\d|2[0-3]):[0-5]\d(\s*[-–—]\s*([01]?\d|2[0-3]):[0-5]\d)?\s*[-–—:]?\s*", "", text)
+        label = label.split(". ")[0].strip(" .—-") or text
+        out.append({"source": "vault", "summary": label, "all_day": False,
+                    "day": cur, "start": st, "end": en})
+    return out
+
+
+def norm(s):
+    return re.sub(r"[^a-z0-9]+", "", s.lower())[:24]
+
+
+def fold(items):
+    """A vault line describing an event already on Google is the same thing."""
+    google = [i for i in items if i["source"] != "vault"]
+    folded = []
+    for it in items:
+        if it["source"] == "vault" and it.get("start"):
+            twin = next((g for g in google if g.get("start") == it["start"]
+                         or (g.get("start") and norm(g["summary"])[:12]
+                             and norm(g["summary"])[:12] in norm(it["summary"]))), None)
+            if twin:
+                twin.setdefault("also", []).append("calendar.md")
+                continue
+        folded.append(it)
+    return folded
+
+
+def overlaps(timed):
+    out = []
+    for i, a in enumerate(timed):
+        for b in timed[i + 1:]:
+            if a["start"] < b["end"] and b["start"] < a["end"]:
+                out.append((a, b))
+    return out
+
+
+def gaps(timed, day):
+    free, cursor = [], datetime.combine(day, DAY_START)
+    close = datetime.combine(day, DAY_END)
+    for ev in timed:
+        if ev["end"] <= cursor:
+            continue
+        if ev["start"] - cursor >= USEFUL_GAP:
+            free.append((cursor, min(ev["start"], close)))
+        cursor = max(cursor, ev["end"])
+    if close - cursor >= USEFUL_GAP:
+        free.append((cursor, close))
+    return [(s, e) for s, e in free if e > s]
+
+
+def render(day, items, problems):
+    timed = sorted([i for i in items if i.get("start") and not i.get("all_day")],
+                   key=lambda i: i["start"])
+    allday = [i for i in items if i.get("all_day")]
+    untimed = [i for i in items if i.get("untimed")]
+    lines = [f"## {day:%Y-%m-%d %A}"]
+    if allday:
+        lines.append("")
+        for i in allday:
+            lines.append(f"- all-day · {i['summary']} ({i['source']})")
+    lines.append("")
+    if not timed:
+        lines.append("- nothing scheduled")
+    for i in timed:
+        tag = {"8gears": "work", "special": "special", "bupddev": "donna",
+               "vault": "vault-only"}.get(i["source"], i["source"])
+        extra = " +calendar.md" if i.get("also") else ""
+        lines.append(f"- {i['start']:%H:%M}-{i['end']:%H:%M} · {i['summary'][:58]} [{tag}{extra}]")
+    clash = overlaps(timed)
+    if clash:
+        lines += ["", "### Conflicts"]
+        for a, b in clash:
+            lines.append(f"- {a['start']:%H:%M} {a['summary'][:34]} ⨯ "
+                         f"{b['start']:%H:%M} {b['summary'][:34]}")
+    tight = [(a, b) for a, b in zip(timed, timed[1:])
+             if timedelta() <= b["start"] - a["end"] < TIGHT]
+    if tight:
+        lines += ["", "### Back-to-back"]
+        for a, b in tight:
+            mins = round((b["start"] - a["end"]).total_seconds() / 60)
+            lines.append(f"- {a['summary'][:30]} → {b['summary'][:30]} ({mins}m gap)")
+    free = gaps(timed, day)
+    if free:
+        lines += ["", "### Free blocks"]
+        for s, e in free:
+            mins = round((e - s).total_seconds() / 60)
+            lines.append(f"- {s:%H:%M}-{e:%H:%M} ({mins // 60}h{mins % 60:02d})")
+    if untimed:
+        lines += ["", "### Untimed (calendar.md)"]
+        lines += [f"- {i['summary'][:70]}" for i in untimed]
+    if problems:
+        lines += ["", "### Degraded"]
+        lines += [f"- {p}" for p in problems]
+    return "\n".join(lines)
+
+
+def main(argv):
+    flags = {a for a in argv if a.startswith("--")}
+    if "--help" in flags or "-h" in flags:
+        print(__doc__)
+        return 0
+    on = next((a.split("=", 1)[1] for a in flags if a.startswith("--date=")), None)
+    span = int(next((a.split("=", 1)[1] for a in flags if a.startswith("--days=")), 1))
+    start = date.fromisoformat(on) if on else date.today()
+    days = [(start + timedelta(days=n)).isoformat() for n in range(span)]
+
+    items, problems = [], []
+    for cal, source, only_b in ((SPINE, "8gears", False), (SPECIAL, "special", True),
+                                (OWN, "bupddev", False)):
+        try:
+            items += collect(cal, source, start, span, birthdays_only=only_b)
+        except Exception as exc:
+            problems.append(f"{source} calendar unreadable: {exc}")
+    items += vault_entries(set(days))
+    items = fold(items)
+
+    if "--json" in flags:
+        print(json.dumps({
+            "generated": datetime.now().isoformat(timespec="seconds"),
+            "days": days,
+            "degraded": problems,
+            "items": [{**i,
+                       "start": i["start"].isoformat() if i.get("start") else None,
+                       "end": i["end"].isoformat() if i.get("end") else None}
+                      for i in sorted(items, key=lambda x: (x["day"], x.get("start") or datetime.min))],
+        }, indent=2))
+        return 1 if problems else 0
+
+    if "--quiet" not in flags:
+        for n in range(span):
+            d = start + timedelta(days=n)
+            print(render(d, [i for i in items if i["day"] == d.isoformat()], problems if n == 0 else []))
+            if n < span - 1:
+                print()
+    return 1 if problems else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
