@@ -38,7 +38,9 @@ notionsync: no NOTION_TOKEN.
    add the integration. Unshared pages are invisible to the API.
 4. Run notionsync again.
 EOF
-  exit 2
+  # exit 0 so the timer stays quiet and self-heals when the token lands,
+  # same contract as discsync/slacsync
+  exit 0
 fi
 export NOTION_TOKEN
 

@@ -1,0 +1,7 @@
+[Unit]
+Description=Donna: mirror Notion workspace into notcrawl (notionsync)
+Documentation=file:///var/home/bupd/obsidian/donna/bin/notionsync
+
+[Service]
+Type=oneshot
+ExecStart=/var/home/bupd/obsidian/donna/bin/notionsync

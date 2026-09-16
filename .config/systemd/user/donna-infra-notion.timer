@@ -1,0 +1,11 @@
+[Unit]
+Description=Donna: Notion mirror, every 6 hours
+
+[Timer]
+OnBootSec=15min
+OnUnitActiveSec=6h
+AccuracySec=15min
+Unit=donna-infra-notion.service
+
+[Install]
+WantedBy=timers.target
