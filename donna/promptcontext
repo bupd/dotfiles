@@ -1,0 +1,34 @@
+#!/usr/bin/env python3
+"""promptcontext - UserPromptSubmit hook for Donna's session.
+
+Reads the hook JSON on stdin; when the prompt originated from Discord
+(discordwatch/discordears prefix it), prints reply instructions, which
+Claude Code appends to the prompt as context. Silent otherwise.
+"""
+import json
+import sys
+
+try:
+    prompt = json.load(sys.stdin).get("prompt", "")
+except (json.JSONDecodeError, AttributeError):
+    sys.exit(0)
+
+VC = "live in the agents-vc voice channel"
+TEXT = "From Prasanth over Discord"
+
+if VC in prompt:
+    print(
+        "[hook] This came from Prasanth SPEAKING in the agents-vc voice "
+        "channel. Reply out loud with donna/bin/vcsay \"...\" (or vcsay "
+        "--hi \"देवनागरी\" if he spoke Hindi) - short, spoken-style. A "
+        "terminal-only reply is one he never hears. Load the discord-comms "
+        "skill if unsure."
+    )
+elif TEXT in prompt:
+    print(
+        "[hook] This came from Prasanth on Discord (typed or voice note). "
+        "After acting, reply into the channel with donna/bin/discordsend "
+        "\"...\" - a terminal-only reply is one he never sees. Load the "
+        "discord-comms skill if unsure."
+    )
+sys.exit(0)
