@@ -153,8 +153,11 @@ No re-auth is needed afterwards; the token already carries the scopes.
 `whisperd` (donna-infra-whisperd) keeps large-v3-turbo loaded and serves
 transcription over a unix socket; both Discord pipelines prefer it and fall
 back to the hyprwhspr CLI. It runs whisper's translate task with auto-detect,
-so Hindi/Tamil/English speech all reach Donna as English text. CPU-only until
-the CUDA toolkit is installed (~22s/utterance; with CUDA ~1s).
+so Hindi/Tamil/English speech all reach Donna as English text. Runs on the
+GPU via faster-whisper: CUDA comes as pip wheels in the fw venv
+(~/.local/share/donna-voice/fw), no system toolkit - pacman cannot install
+cuda on this bootc host (/opt conflict). ~1s/utterance on the 3060; the
+proper toolkit is baked into the next image (oci-native/archlinux#29).
 
 Hindi out: `speak --hi "देवनागरी"` / `vcsay --hi "..."` synthesize real Hindi
 via `kokorohi` (kokoro's hf_alpha voice; the library's 6-language guard is

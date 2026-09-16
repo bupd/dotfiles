@@ -1,4 +1,4 @@
-#!/home/bupd/.local/share/hyprwhspr/venv/bin/python
+#!/home/bupd/.local/share/donna-voice/fw/bin/python
 """whisperd - persistent whisper server so transcription is instant.
 
 usage: whisperd serve              (daemon; donna-infra-whisperd.service)
@@ -26,12 +26,38 @@ SOCK = RUNDIR / "whisperd.sock"
 
 
 def serve():
-    from pywhispercpp.model import Model
-    print(f"whisperd: loading {MODEL.name}...", flush=True)
-    # pywhispercpp resolves "<name>" inside models_dir as ggml-<name>.bin;
-    # it does not accept a bare path
-    model = Model("large-v3-turbo", models_dir=str(MODEL.parent))
-    print("whisperd: model loaded, serving", flush=True)
+    # faster-whisper ships CUDA as pip wheels (cublas/cudnn) - no system
+    # toolkit needed, which matters on this bootc host where pacman cannot
+    # install the cuda package (/opt conflict). GPU ~1s/utterance vs ~22s
+    # CPU for the same turbo model.
+    #
+    # The dynamic loader cannot see the wheel lib dirs on its own; set
+    # LD_LIBRARY_PATH and re-exec once so ctranslate2 finds libcublas/cudnn.
+    lib_dirs = []
+    for sp in __import__("site").getsitepackages():
+        for sub in ("nvidia/cublas/lib", "nvidia/cudnn/lib"):
+            d = Path(sp) / sub
+            if d.is_dir():
+                lib_dirs.append(str(d))
+    current = os.environ.get("LD_LIBRARY_PATH", "")
+    if lib_dirs and not all(d in current.split(":") for d in lib_dirs):
+        os.environ["LD_LIBRARY_PATH"] = ":".join(lib_dirs + ([current] if current else []))
+        os.execv(sys.executable, [sys.executable, __file__, "serve"])
+
+    from faster_whisper import WhisperModel
+    print("whisperd: loading large-v3-turbo...", flush=True)
+    try:
+        model = WhisperModel("large-v3-turbo", device="cuda", compute_type="float16")
+        dev = "cuda"
+    except Exception as e:
+        print(f"whisperd: cuda unavailable ({str(e)[:120]}) - cpu int8 fallback", flush=True)
+        model = WhisperModel("large-v3-turbo", device="cpu", compute_type="int8")
+        dev = "cpu"
+    print(f"whisperd: model loaded on {dev}, serving", flush=True)
+    _serve_loop(model)
+
+
+def _serve_loop(model):
     RUNDIR.mkdir(parents=True, exist_ok=True)
     SOCK.unlink(missing_ok=True)
     srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -48,13 +74,13 @@ def serve():
                     break
                 data += chunk
             req = json.loads(data)
-            lang = req.get("lang") or ""
+            lang = req.get("lang") or None
             if lang == "auto":
-                lang = ""   # whisper.cpp spells auto-detect as empty string
-            # translate=True makes every language land as English - Hindi,
+                lang = None   # faster-whisper spells auto-detect as None
+            # task=translate makes every language land as English - Hindi,
             # Tamil, whatever - which is what the agents read best. English
             # in, English out; it is a no-op for English speech.
-            segs = model.transcribe(req["wav"], language=lang, translate=True)
+            segs, _info = model.transcribe(req["wav"], language=lang, task="translate")
             text = " ".join(s.text.strip() for s in segs).strip()
             conn.sendall((json.dumps({"text": text}) + "\n").encode())
         except Exception as e:
