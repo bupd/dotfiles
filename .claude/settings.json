@@ -2,7 +2,7 @@
   "env": {
     "SHELL": "/usr/bin/zsh"
   },
-  "model": "fable[1m]",
+  "model": "claude-fable-5-1[1m]",
   "hooks": {
     "SessionStart": [
       {
