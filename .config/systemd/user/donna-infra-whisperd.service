@@ -1,0 +1,11 @@
+[Unit]
+Description=Donna: persistent whisper transcription server (large-v3-turbo)
+Documentation=file:///var/home/bupd/obsidian/donna/bin/whisperd
+
+[Service]
+ExecStart=/var/home/bupd/obsidian/donna/bin/whisperd serve
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

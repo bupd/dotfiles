@@ -82,8 +82,11 @@ async function transcribePcm(pcm) {
     let r = await sh('ffmpeg', ['-y', '-loglevel', 'error', '-f', 's16le', '-ar', '48000',
       '-ac', '2', '-i', raw, '-ar', '16000', '-ac', '1', wav]);
     if (r.err) { log(`ffmpeg: ${String(r.stderr).slice(0, 200)}`); return null; }
-    r = await sh('hyprwhspr', ['transcribe', wav]);
-    if (r.err) { log(`hyprwhspr: ${String(r.stderr).slice(0, 200)}`); return null; }
+    // prefer the persistent whisperd (model stays loaded); fall back to the
+    // hyprwhspr CLI, which reloads the model every call
+    r = await sh(path.join(VAULT, 'donna', 'bin', 'whisperd'), ['transcribe', wav]);
+    if (r.err) r = await sh('hyprwhspr', ['transcribe', wav]);
+    if (r.err) { log(`transcribe: ${String(r.stderr).slice(0, 200)}`); return null; }
     const text = String(r.stdout).trim();
     if (!text || text.replace(/[.,!? ]/g, '').length < 2 || text.includes('BLANK_AUDIO')) return null;
     return text;
@@ -195,13 +198,14 @@ async function main() {
       const files = fs.readdirSync(SPOOL).filter((f) => f.endsWith('.txt')).sort();
       if (!files.length) continue;
       const f = path.join(SPOOL, files[0]);
+      const isHi = f.endsWith('.hi.txt');   // vcsay --hi: speak in Hindi
       let text = '';
       try { text = fs.readFileSync(f, 'utf8').trim(); } catch {}
       fs.rmSync(f, { force: true });
       if (!text) continue;
       playing = true;
       const wav = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'say-')), 'say.wav');
-      const r = await sh(SPEAK, ['-o', wav, text]);
+      const r = await sh(SPEAK, isHi ? ['--hi', '-o', wav, text] : ['-o', wav, text]);
       if (r.err || !fs.existsSync(wav)) {
         log(`tts failed: ${String(r.stderr).slice(0, 160)}`);
         playing = false; continue;

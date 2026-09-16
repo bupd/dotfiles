@@ -147,3 +147,16 @@ gcloud services enable gmail.googleapis.com drive.googleapis.com \
 ```
 
 No re-auth is needed afterwards; the token already carries the scopes.
+
+## Multilingual
+
+`whisperd` (donna-infra-whisperd) keeps large-v3-turbo loaded and serves
+transcription over a unix socket; both Discord pipelines prefer it and fall
+back to the hyprwhspr CLI. It runs whisper's translate task with auto-detect,
+so Hindi/Tamil/English speech all reach Donna as English text. CPU-only until
+the CUDA toolkit is installed (~22s/utterance; with CUDA ~1s).
+
+Hindi out: `speak --hi "देवनागरी"` / `vcsay --hi "..."` synthesize real Hindi
+via `kokorohi` (kokoro's hf_alpha voice; the library's 6-language guard is
+patched - the model itself was trained on Hindi). `SPEAK_HI_VOICE` /
+`SPEAK_HI_SPEED` tune it. No Tamil voice exists in the model.

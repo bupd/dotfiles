@@ -14,9 +14,27 @@ set -euo pipefail
 MODELS="$HOME/.local/share/kokoro-tts"
 VOICE_ENV="${XDG_CONFIG_HOME:-$HOME/.config}/donna/voice.env"
 
+HI=0
 case "${1:-}" in
   -h|--help) sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  --hi) HI=1; shift ;;
 esac
+
+# --hi: real Hindi (Devanagari) through kokorohi and the hf_alpha voice
+if [[ $HI -eq 1 ]]; then
+  KOKOROHI="$(dirname "$(readlink -f "$0")")/kokorohi"
+  OUT=""
+  if [[ "${1:-}" == "-o" ]]; then OUT="$2"; shift 2; fi
+  if [[ -n "$OUT" ]]; then
+    if [[ $# -gt 0 ]]; then "$KOKOROHI" -o "$OUT" "$@"; else "$KOKOROHI" -o "$OUT"; fi
+    exit $?
+  fi
+  tmp="$(mktemp --suffix=.wav)"
+  if [[ $# -gt 0 ]]; then "$KOKOROHI" -o "$tmp" "$@"; else "$KOKOROHI" -o "$tmp"; fi
+  paplay "$tmp" 2>/dev/null || ffplay -nodisp -autoexit -loglevel quiet "$tmp"
+  rm -f "$tmp"
+  exit 0
+fi
 
 # saved profile fills in whatever the environment does not already set
 if [[ -r "$VOICE_ENV" ]]; then

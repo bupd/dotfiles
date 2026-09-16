@@ -1,0 +1,118 @@
+#!/home/bupd/.local/share/hyprwhspr/venv/bin/python
+"""whisperd - persistent whisper server so transcription is instant.
+
+usage: whisperd serve              (daemon; donna-infra-whisperd.service)
+       whisperd transcribe FILE [LANG]   client: print transcript
+       whisperd ping                client: exit 0 if the daemon is up
+
+`hyprwhspr transcribe` reloads the 1.5GB large-v3-turbo model on every
+call (~17s). This daemon (pywhispercpp, CUDA) loads it once and answers
+over a unix socket in under a second. Language auto-detects per request
+(English/Hindi/Tamil/anything whisper knows) unless LANG is given.
+
+Protocol: one JSON line per request {"wav": path, "lang": "auto"} ->
+one JSON line reply {"text": ...} or {"error": ...}.
+Clients should fall back to `hyprwhspr transcribe` when ping fails.
+"""
+import json
+import os
+import socket
+import sys
+from pathlib import Path
+
+MODEL = Path.home() / ".local/share/hyprwhspr/models/ggml-large-v3-turbo.bin"
+RUNDIR = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "donna"
+SOCK = RUNDIR / "whisperd.sock"
+
+
+def serve():
+    from pywhispercpp.model import Model
+    print(f"whisperd: loading {MODEL.name}...", flush=True)
+    # pywhispercpp resolves "<name>" inside models_dir as ggml-<name>.bin;
+    # it does not accept a bare path
+    model = Model("large-v3-turbo", models_dir=str(MODEL.parent))
+    print("whisperd: model loaded, serving", flush=True)
+    RUNDIR.mkdir(parents=True, exist_ok=True)
+    SOCK.unlink(missing_ok=True)
+    srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    srv.bind(str(SOCK))
+    os.chmod(SOCK, 0o600)
+    srv.listen(4)
+    while True:
+        conn, _ = srv.accept()
+        try:
+            data = b""
+            while not data.endswith(b"\n"):
+                chunk = conn.recv(65536)
+                if not chunk:
+                    break
+                data += chunk
+            req = json.loads(data)
+            lang = req.get("lang") or ""
+            if lang == "auto":
+                lang = ""   # whisper.cpp spells auto-detect as empty string
+            # translate=True makes every language land as English - Hindi,
+            # Tamil, whatever - which is what the agents read best. English
+            # in, English out; it is a no-op for English speech.
+            segs = model.transcribe(req["wav"], language=lang, translate=True)
+            text = " ".join(s.text.strip() for s in segs).strip()
+            conn.sendall((json.dumps({"text": text}) + "\n").encode())
+        except Exception as e:
+            try:
+                conn.sendall((json.dumps({"error": str(e)}) + "\n").encode())
+            except OSError:
+                pass
+        finally:
+            conn.close()
+
+
+def ask(payload, timeout=120):
+    c = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    c.settimeout(timeout)
+    c.connect(str(SOCK))
+    c.sendall((json.dumps(payload) + "\n").encode())
+    data = b""
+    while not data.endswith(b"\n"):
+        chunk = c.recv(65536)
+        if not chunk:
+            break
+        data += chunk
+    c.close()
+    return json.loads(data)
+
+
+def main(argv):
+    if not argv or argv[0] in ("-h", "--help"):
+        print(__doc__)
+        return 0
+    if argv[0] == "serve":
+        serve()
+        return 0
+    if argv[0] == "ping":
+        try:
+            ask({"wav": "", "lang": "auto"}, timeout=5)
+            return 0
+        except OSError:
+            return 1
+    if argv[0] == "transcribe":
+        if len(argv) < 2:
+            print("whisperd: transcribe needs a file", file=sys.stderr)
+            return 2
+        wav = str(Path(argv[1]).resolve())
+        lang = argv[2] if len(argv) > 2 else "auto"
+        try:
+            r = ask({"wav": wav, "lang": lang})
+        except OSError as e:
+            print(f"whisperd: daemon unreachable: {e}", file=sys.stderr)
+            return 3
+        if "error" in r:
+            print(f"whisperd: {r['error']}", file=sys.stderr)
+            return 1
+        print(r["text"])
+        return 0
+    print(f"whisperd: unknown command {argv[0]!r}", file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

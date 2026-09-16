@@ -140,8 +140,14 @@ def transcribe(audio_path):
         log(f"ffmpeg: {r.stderr.strip()[:200]}")
         return None
     try:
-        r = subprocess.run(["hyprwhspr", "transcribe", str(wav)],
+        # prefer the persistent whisperd (model stays loaded); fall back to
+        # the hyprwhspr CLI, which reloads the model every call
+        r = subprocess.run([str(VAULT / "donna" / "bin" / "whisperd"),
+                            "transcribe", str(wav)],
                            capture_output=True, text=True, timeout=600)
+        if r.returncode != 0:
+            r = subprocess.run(["hyprwhspr", "transcribe", str(wav)],
+                               capture_output=True, text=True, timeout=600)
     finally:
         wav.unlink(missing_ok=True)
     if r.returncode != 0:

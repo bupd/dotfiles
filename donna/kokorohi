@@ -1,0 +1,55 @@
+#!/home/bupd/.local/share/uv/tools/kokoro-tts/bin/python
+"""kokorohi - synthesize Hindi speech (Devanagari) with kokoro.
+
+usage: kokorohi -o OUT.wav <hindi text...>     (or text on stdin)
+       env: SPEAK_HI_VOICE (default hf_alpha), SPEAK_HI_SPEED (default 1.0)
+
+kokoro-onnx hardcodes six languages, but the Kokoro v1.0 model was trained
+on Hindi (the hf_*/hm_* voices) and espeak-ng phonemizes Devanagari fine -
+this helper patches the guard list and synthesizes with lang='hi'.
+Used by `speak --hi` and, through the vc-say spool, by `vcsay --hi`.
+"""
+import os
+import sys
+from pathlib import Path
+
+MODELS = Path.home() / ".local/share/kokoro-tts"
+
+
+def main(argv):
+    if not argv or argv[0] in ("-h", "--help"):
+        print(__doc__)
+        return 0
+    if argv[0] != "-o" or len(argv) < 2:
+        print("kokorohi: first args must be -o OUT.wav", file=sys.stderr)
+        return 2
+    out, rest = argv[1], argv[2:]
+    text = " ".join(rest).strip() if rest else sys.stdin.read().strip()
+    if not text:
+        print("kokorohi: nothing to say", file=sys.stderr)
+        return 2
+
+    import soundfile as sf
+    import kokoro_onnx
+    from kokoro_onnx import Kokoro
+    for holder in (getattr(kokoro_onnx, "config", None), kokoro_onnx):
+        langs = getattr(holder, "SUPPORTED_LANGUAGES", None)
+        if langs is not None and "hi" not in langs:
+            try:
+                langs.append("hi")
+            except AttributeError:
+                setattr(holder, "SUPPORTED_LANGUAGES", list(langs) + ["hi"])
+
+    k = Kokoro(str(MODELS / "kokoro-v1.0.onnx"), str(MODELS / "voices-v1.0.bin"))
+    samples, sr = k.create(
+        text,
+        voice=os.environ.get("SPEAK_HI_VOICE", "hf_alpha"),
+        speed=float(os.environ.get("SPEAK_HI_SPEED", "1.0")),
+        lang="hi",
+    )
+    sf.write(out, samples, sr)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
