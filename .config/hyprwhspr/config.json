@@ -7,7 +7,7 @@
     "PandaKB.COM Corne V3 Keyboard"
   ],
   "audio_device_name": "alsa_input.usb-0c76_USB_PnP_Audio_Device-00.mono-fallback",
-  "model": "base.en",
+  "model": "large-v3-turbo",
   "transcription_backend": "nvidia",
   "audio_ducking": true,
   "post_transcription_hook": "/home/bupd/bin/hyprwhspr-history-hook",

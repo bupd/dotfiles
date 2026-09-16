@@ -46,3 +46,8 @@ identity-backup/.*.partial.zip
 
 # Donna machinery - live env files carry tokens (public repo!)
 .config/donna/*.env
+
+# Claude Code runtime junk - regenerated, never commit
+.claude/telemetry/
+.claude/stats-cache.json
+__pycache__/

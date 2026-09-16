@@ -1,8 +1,8 @@
 {
-  "model": "claude-fable-5[1m]",
   "env": {
     "SHELL": "/usr/bin/zsh"
   },
+  "model": "fable[1m]",
   "hooks": {
     "SessionStart": [
       {
@@ -21,11 +21,13 @@
     "type": "command",
     "command": "~/.claude/statusline.sh"
   },
+  "effortLevel": "high",
   "voice": {
     "enabled": true,
     "mode": "hold"
   },
   "skipDangerousModePermissionPrompt": true,
   "theme": "dark",
+  "verbose": true,
   "voiceEnabled": true
 }
