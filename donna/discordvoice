@@ -159,7 +159,9 @@ class DonnaVoice(discord.Client):
         await self.reconcile()
 
     def humans_in_channel(self, ch):
-        return [m for m in ch.members if not m.bot]
+        # voice_states works without the members intent; ch.members does not
+        # (someone already in the channel before we connect is invisible there)
+        return [uid for uid in ch.voice_states if uid != self.user.id]
 
     async def reconcile(self):
         ch = self.get_channel(self.channel_id)
@@ -172,10 +174,24 @@ class DonnaVoice(discord.Client):
                 self.vc = await ch.connect()
             except discord.ClientException:
                 return
+            # connect() can return before the voice websocket handshake is
+            # done; start_recording on a half-open connection raises.
+            for _ in range(50):
+                if self.vc.is_connected():
+                    break
+                await asyncio.sleep(0.2)
+            else:
+                log("voice handshake never completed - disconnecting")
+                await self.vc.disconnect(force=True)
+                self.vc = None
+                return
             sink = StreamSink(self.enqueue_utterance)
-            self.vc.start_recording(sink, self.recording_done)
+            try:
+                self.vc.start_recording(sink, self.recording_done)
+            except Exception as e:
+                log(f"start_recording failed ({e}) - staying for speak-only")
             self.sink = sink
-            log(f"joined {ch.name}: {', '.join(m.display_name for m in humans)}")
+            log(f"joined {ch.name} ({len(humans)} in channel)")
         elif not humans and self.vc is not None and self.vc.is_connected():
             try:
                 self.vc.stop_recording()

@@ -6,19 +6,33 @@
 #        echo hi | speak                read stdin
 #        speak -o out.wav <text...>     save to file instead of playing
 #
-# Env: SPEAK_VOICE (default af_sarah), SPEAK_SPEED (default 1.0).
-# Models live in ~/.local/share/kokoro-tts/.
+# Voice profile: ~/.config/donna/voice.env (written by `voicelab`, the
+# slider UI) sets SPEAK_VOICE / SPEAK_SPEED / SPEAK_PITCH; explicit env
+# vars override it. Defaults: af_sarah, 1.0, no pitch shift.
 set -euo pipefail
 
 MODELS="$HOME/.local/share/kokoro-tts"
-VOICE="${SPEAK_VOICE:-af_sarah}"
-SPEED="${SPEAK_SPEED:-1.0}"
-OUT=""
+VOICE_ENV="${XDG_CONFIG_HOME:-$HOME/.config}/donna/voice.env"
 
 case "${1:-}" in
-  -h|--help) sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
-  -o) OUT="$2"; shift 2 ;;
+  -h|--help) sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
 esac
+
+# saved profile fills in whatever the environment does not already set
+if [[ -r "$VOICE_ENV" ]]; then
+  while IFS='=' read -r k v; do
+    [[ -z "$k" || "$k" == \#* ]] && continue
+    [[ -z "${!k:-}" ]] && export "$k=$v"
+  done < "$VOICE_ENV"
+fi
+VOICE="${SPEAK_VOICE:-af_sarah}"
+SPEED="${SPEAK_SPEED:-1.0}"
+PITCH="${SPEAK_PITCH:-0}"
+
+OUT=""
+if [[ "${1:-}" == "-o" ]]; then
+  OUT="$2"; shift 2
+fi
 
 args=("--model" "$MODELS/kokoro-v1.0.onnx" "--voices" "$MODELS/voices-v1.0.bin"
       "--voice" "$VOICE" "--speed" "$SPEED")
@@ -36,20 +50,58 @@ run() {
   return $rc
 }
 
+# pitch-shift a wav in place (kokoro output is 24 kHz)
+shift_pitch() {
+  local wav="$1" factor tmp
+  factor=$(awk "BEGIN{printf \"%.6f\", 2^($PITCH/12)}")
+  tmp="${wav%.wav}.pitch.wav"
+  ffmpeg -y -loglevel error -i "$wav" \
+    -af "asetrate=24000*${factor},aresample=24000,atempo=$(awk "BEGIN{printf \"%.6f\", 1/${factor}}")" \
+    "$tmp"
+  mv "$tmp" "$wav"
+}
+
+needs_pitch() { awk "BEGIN{exit !($PITCH > 0.05 || $PITCH < -0.05)}"; }
+
 if [[ $# -eq 1 && -f "$1" ]]; then
-  input="$1"
+  input="$1"; from_stdin=0
 else
-  input="-"
+  input="/dev/stdin"; from_stdin=1
 fi
 
-if [[ "$input" == "-" && $# -gt 0 ]]; then
-  if [[ -n "$OUT" ]]; then
-    printf '%s\n' "$*" | run /dev/stdin "$OUT" "${args[@]}"
+synth_to() {  # $1 = output wav
+  if [[ $from_stdin -eq 1 && $# -gt 1 ]]; then :; fi
+  if [[ $from_stdin -eq 1 ]]; then
+    if [[ ${ARGTEXT+x} ]]; then
+      printf '%s\n' "$ARGTEXT" | run /dev/stdin "$1" "${args[@]}"
+    else
+      run /dev/stdin "$1" "${args[@]}"
+    fi
   else
-    printf '%s\n' "$*" | run /dev/stdin --stream "${args[@]}"
+    run "$input" "$1" "${args[@]}"
   fi
-elif [[ -n "$OUT" ]]; then
-  run "$input" "$OUT" "${args[@]}"
+}
+
+[[ $from_stdin -eq 1 && $# -gt 0 ]] && ARGTEXT="$*"
+
+if [[ -n "$OUT" ]]; then
+  synth_to "$OUT"
+  needs_pitch && shift_pitch "$OUT"
+  exit 0
+fi
+
+if needs_pitch; then
+  tmp="$(mktemp --suffix=.wav)"
+  synth_to "$tmp"
+  shift_pitch "$tmp"
+  paplay "$tmp" 2>/dev/null || ffplay -nodisp -autoexit -loglevel quiet "$tmp"
+  rm -f "$tmp"
 else
-  run "$input" --stream "${args[@]}"
+  if [[ $from_stdin -eq 1 && ${ARGTEXT+x} ]]; then
+    printf '%s\n' "$ARGTEXT" | run /dev/stdin --stream "${args[@]}"
+  elif [[ $from_stdin -eq 1 ]]; then
+    run /dev/stdin --stream "${args[@]}"
+  else
+    run "$input" --stream "${args[@]}"
+  fi
 fi

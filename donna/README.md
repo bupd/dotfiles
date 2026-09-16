@@ -75,6 +75,14 @@ fill the env file. If `herdr agent prompt` fails (Donna's pane blocked), the
 message still lands in the inbox note and the Discord message shows ⚠️
 instead of ✅ — a retry queue is a known gap.
 
+## Voice channel (agents-vc)
+
+| Script | What it does |
+|---|---|
+| `discordears` | Donna's full voice presence: discord.js + @discordjs/voice with DAVE (E2EE) support - the only stack whose receive works post-E2EE (py-cord 2.6/2.7 cannot handshake, 2.8's receive is broken upstream, pycord#3139; the py-cord attempt is kept as `discordvoice` for reference). Joins `DISCORD_VOICE_CHANNEL` when a human is present, leaves when empty. Utterances cut on 1s silence -> opus decode -> hyprwhspr -> inbox + herdr prompt to Donna. Runs as `donna-infra-voice.service`; node deps in `~/.local/share/donna-voice/ears/`. |
+| `vcsay` | Donna speaks in the channel: `vcsay "text"` drops into the spool (`~/.local/state/donna/vc-say/`), synthesized by kokoro and played in order. |
+| `voicelab` | Web UI at 127.0.0.1:7777 for tuning Donna's voice: blend up to 4 of kokoro's 50 voices with weight sliders, speed and pitch dials, test box, Save writes `~/.config/donna/voice.env` which `speak` reads every call. Current profile: `af_bella:60,af_river:40` speed 1.1 - tuned against a Suits reference clip (median F0 188Hz, blend measures 187.5). |
+
 hyprwhspr note: its `transcribe` subcommand runs in the app venv at
 `~/.local/share/hyprwhspr/venv`, which was missing `soundfile` — installed
 2026-09-16. The launcher routes on argv[1], so `transcribe` must be the

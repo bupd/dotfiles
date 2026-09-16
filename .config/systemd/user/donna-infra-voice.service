@@ -4,7 +4,7 @@ Documentation=file:///var/home/bupd/obsidian/donna/bin/discordvoice
 After=network-online.target
 
 [Service]
-ExecStart=/var/home/bupd/obsidian/donna/bin/discordvoice
+ExecStart=/var/home/bupd/obsidian/donna/bin/discordears
 Restart=on-failure
 RestartSec=15
 

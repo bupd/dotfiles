@@ -1,0 +1,230 @@
+#!/home/linuxbrew/.linuxbrew/bin/node
+// discordears - Donna's full voice presence in agents-vc (discord.js + DAVE).
+//
+// usage: discordears   (daemon; donna-infra-voice.service runs it)
+//
+// Replaces the py-cord voice daemon: discord.js's voice stack speaks DAVE
+// (Discord's E2EE voice protocol), so receiving audio works where py-cord
+// cannot. Joins DISCORD_VOICE_CHANNEL when a human is in it, leaves when
+// empty. Utterances are cut per speaker after 1s of silence, decoded from
+// opus, transcribed (ffmpeg -> 16k wav -> hyprwhspr), appended to
+// donna/discord-inbox.md and prompted to Donna via herdr; she answers out
+// loud through the vcsay spool (~/.local/state/donna/vc-say/*.txt, played
+// oldest-first via kokoro `speak -o`).
+//
+// Config: ~/.config/donna/discord.env - DISCORD_BOT_TOKEN,
+// DISCORD_VOICE_CHANNEL, DISCORD_ALLOWED_USERS. Idles and rechecks every
+// 20s until both are set.
+'use strict';
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const { execFileSync, execFile } = require('child_process');
+const { createRequire } = require('module');
+
+const req = createRequire(path.join(os.homedir(), '.local/share/donna-voice/ears/package.json'));
+const { Client, GatewayIntentBits } = req('discord.js');
+const {
+  joinVoiceChannel, getVoiceConnection, EndBehaviorType,
+  createAudioPlayer, createAudioResource, AudioPlayerStatus,
+  VoiceConnectionStatus, entersState,
+} = req('@discordjs/voice');
+const prism = req('prism-media');
+
+const HOME = os.homedir();
+const ENV_FILE = path.join(process.env.XDG_CONFIG_HOME || path.join(HOME, '.config'), 'donna', 'discord.env');
+const STATE = path.join(process.env.XDG_STATE_HOME || path.join(HOME, '.local/state'), 'donna');
+const SPOOL = path.join(STATE, 'vc-say');
+const VAULT = path.resolve(__dirname, '..', '..');
+const INBOX = path.join(VAULT, 'donna', 'discord-inbox.md');
+const SPEAK = path.join(VAULT, 'donna', 'bin', 'speak');
+const AGENT = 'donna';
+const SILENCE_MS = 1000;
+const MIN_PCM = 0.4 * 48000 * 2 * 2;   // 0.4s of 48k stereo s16le
+
+const log = (m) => console.log(`discordears: ${m}`);
+
+// systemd user services carry a bare PATH; herdr and friends live elsewhere
+for (const d of ['/home/linuxbrew/.linuxbrew/bin', path.join(HOME, '.local/bin'),
+                 '/usr/local/bin', '/usr/bin']) {
+  if (fs.existsSync(d) && !(process.env.PATH || '').split(':').includes(d)) {
+    process.env.PATH = `${d}:${process.env.PATH || ''}`;
+  }
+}
+
+function loadEnv() {
+  const cfg = {};
+  try {
+    for (const line of fs.readFileSync(ENV_FILE, 'utf8').split('\n')) {
+      const t = line.trim();
+      if (t && !t.startsWith('#') && t.includes('=')) {
+        const i = t.indexOf('=');
+        cfg[t.slice(0, i).trim()] = t.slice(i + 1).trim();
+      }
+    }
+  } catch {}
+  return cfg;
+}
+
+function sh(cmd, args, opts = {}) {
+  return new Promise((resolve) => {
+    execFile(cmd, args, { timeout: 600000, maxBuffer: 64 * 1024 * 1024, ...opts },
+      (err, stdout, stderr) => resolve({ err, stdout, stderr }));
+  });
+}
+
+async function transcribePcm(pcm) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ears-'));
+  const raw = path.join(dir, 'seg.raw');
+  const wav = path.join(dir, 'seg.wav');
+  try {
+    fs.writeFileSync(raw, pcm);
+    let r = await sh('ffmpeg', ['-y', '-loglevel', 'error', '-f', 's16le', '-ar', '48000',
+      '-ac', '2', '-i', raw, '-ar', '16000', '-ac', '1', wav]);
+    if (r.err) { log(`ffmpeg: ${String(r.stderr).slice(0, 200)}`); return null; }
+    r = await sh('hyprwhspr', ['transcribe', wav]);
+    if (r.err) { log(`hyprwhspr: ${String(r.stderr).slice(0, 200)}`); return null; }
+    const text = String(r.stdout).trim();
+    if (!text || text.replace(/[.,!? ]/g, '').length < 2 || text.includes('BLANK_AUDIO')) return null;
+    return text;
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+function appendInbox(author, text) {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  const stamp = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  fs.appendFileSync(INBOX, `\n## ${stamp} - voice-channel from ${author} (agents-vc)\n${text}\n`);
+}
+
+async function promptDonna(author, text) {
+  const msg = `From ${author} live in the agents-vc voice channel (transcribed). ` +
+    `Answer OUT LOUD with donna/bin/vcsay "..." - keep it short and spoken-style, ` +
+    `he is listening, not reading:\n${text}`;
+  const r = await sh('herdr', ['agent', 'prompt', AGENT, msg], { timeout: 60000 });
+  if (r.err) log(`herdr prompt failed: ${String(r.stderr).slice(0, 160)}`);
+}
+
+async function main() {
+  let cfg = loadEnv();
+  while (!cfg.DISCORD_BOT_TOKEN || !cfg.DISCORD_VOICE_CHANNEL) {
+    log(`waiting for DISCORD_BOT_TOKEN + DISCORD_VOICE_CHANNEL in ${ENV_FILE}`);
+    await new Promise((r) => setTimeout(r, 20000));
+    cfg = loadEnv();
+  }
+  const channelId = cfg.DISCORD_VOICE_CHANNEL;
+  const allowed = new Set((cfg.DISCORD_ALLOWED_USERS || '').split(',').map((s) => s.trim()).filter(Boolean));
+
+  const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates] });
+  const player = createAudioPlayer();
+  const subscribed = new Set();
+  let playing = false;
+
+  const humans = (ch) => [...ch.members.values()].filter((m) => !m.user.bot);
+
+  function listen(connection, ch) {
+    const receiver = connection.receiver;
+    receiver.speaking.on('start', (userId) => {
+      if (subscribed.has(userId)) return;
+      if (allowed.size && !allowed.has(userId)) return;
+      const member = ch.members.get(userId);
+      if (member && member.user.bot) return;
+      subscribed.add(userId);
+      const name = member ? member.displayName : userId;
+      const opus = receiver.subscribe(userId, {
+        end: { behavior: EndBehaviorType.AfterSilence, duration: SILENCE_MS },
+      });
+      const decoder = new prism.opus.Decoder({ rate: 48000, channels: 2, frameSize: 960 });
+      const chunks = [];
+      opus.pipe(decoder);
+      decoder.on('data', (c) => chunks.push(c));
+      const done = () => {
+        subscribed.delete(userId);
+        const pcm = Buffer.concat(chunks);
+        if (pcm.length < MIN_PCM) return;
+        transcribePcm(pcm).then(async (text) => {
+          if (!text) return;
+          log(`${name}: ${text.slice(0, 120)}`);
+          appendInbox(name, text);
+          await promptDonna(name, text);
+        }).catch((e) => log(`transcribe error: ${e}`));
+      };
+      decoder.on('end', done);
+      decoder.on('error', (e) => { log(`decoder: ${e}`); done(); });
+    });
+  }
+
+  async function reconcile() {
+    const ch = await client.channels.fetch(channelId).catch(() => null);
+    if (!ch) { log(`voice channel ${channelId} not visible`); return; }
+    const present = humans(ch);
+    const existing = getVoiceConnection(ch.guild.id);
+    if (present.length && !existing) {
+      const connection = joinVoiceChannel({
+        channelId: ch.id, guildId: ch.guild.id,
+        adapterCreator: ch.guild.voiceAdapterCreator,
+        selfDeaf: false, selfMute: false,
+      });
+      try {
+        await entersState(connection, VoiceConnectionStatus.Ready, 20000);
+      } catch (e) {
+        log(`voice connect failed: ${e.message}`); connection.destroy(); return;
+      }
+      connection.subscribe(player);
+      listen(connection, ch);
+      log(`joined ${ch.name} (${present.length} in channel)`);
+      connection.on(VoiceConnectionStatus.Disconnected, () => {
+        setTimeout(() => reconcile().catch(() => {}), 2000);
+      });
+    } else if (!present.length && existing) {
+      existing.destroy();
+      subscribed.clear();
+      log(`left ${ch.name}: empty`);
+    }
+  }
+
+  async function spoolLoop() {
+    fs.mkdirSync(SPOOL, { recursive: true });
+    for (;;) {
+      await new Promise((r) => setTimeout(r, 500));
+      const conn = client.guilds.cache.size &&
+        getVoiceConnection([...client.guilds.cache.keys()][0]);
+      if (!conn || playing) continue;
+      const files = fs.readdirSync(SPOOL).filter((f) => f.endsWith('.txt')).sort();
+      if (!files.length) continue;
+      const f = path.join(SPOOL, files[0]);
+      let text = '';
+      try { text = fs.readFileSync(f, 'utf8').trim(); } catch {}
+      fs.rmSync(f, { force: true });
+      if (!text) continue;
+      playing = true;
+      const wav = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'say-')), 'say.wav');
+      const r = await sh(SPEAK, ['-o', wav, text]);
+      if (r.err || !fs.existsSync(wav)) {
+        log(`tts failed: ${String(r.stderr).slice(0, 160)}`);
+        playing = false; continue;
+      }
+      player.play(createAudioResource(wav));
+      await new Promise((resolve) => {
+        const onIdle = () => { player.off(AudioPlayerStatus.Idle, onIdle); resolve(); };
+        player.on(AudioPlayerStatus.Idle, onIdle);
+        setTimeout(resolve, 300000);
+      });
+      fs.rmSync(path.dirname(wav), { recursive: true, force: true });
+      log(`spoke: ${text.slice(0, 100)}`);
+      playing = false;
+    }
+  }
+
+  client.on('voiceStateUpdate', () => reconcile().catch((e) => log(`reconcile: ${e}`)));
+  client.once('ready', () => {
+    log(`connected as ${client.user.tag} (${client.user.id})`);
+    reconcile().catch((e) => log(`reconcile: ${e}`));
+    spoolLoop().catch((e) => { log(`spool loop died: ${e}`); process.exit(1); });
+  });
+  client.login(cfg.DISCORD_BOT_TOKEN);
+}
+
+main().catch((e) => { log(`fatal: ${e}`); process.exit(1); });

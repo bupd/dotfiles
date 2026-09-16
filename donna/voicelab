@@ -1,0 +1,217 @@
+#!/usr/bin/env python3
+"""voicelab - local web UI for tuning Donna's voice (kokoro).
+
+usage: voicelab [--port N]     (default 7777; Ctrl+C to stop)
+
+Open http://127.0.0.1:7777 - blend up to four voices with weight sliders,
+set speed and pitch, type a test line and hear it, then Save to make it
+Donna's voice everywhere: writes ~/.config/donna/voice.env, which `speak`
+(and so vcsay and the voice channel) reads on every invocation. No restart
+of anything needed.
+"""
+import json
+import math
+import os
+import subprocess
+import sys
+import tempfile
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+
+MODELS = Path.home() / ".local/share/kokoro-tts"
+VOICE_ENV = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "donna" / "voice.env"
+
+VOICES = {
+    "American female": ["af_alloy", "af_aoede", "af_bella", "af_heart", "af_jessica",
+                        "af_kore", "af_nicole", "af_nova", "af_river", "af_sarah", "af_sky"],
+    "American male": ["am_adam", "am_echo", "am_eric", "am_fenrir", "am_liam",
+                      "am_michael", "am_onyx", "am_puck", "am_santa"],
+    "British female": ["bf_alice", "bf_emma", "bf_isabella", "bf_lily"],
+    "British male": ["bm_daniel", "bm_fable", "bm_george", "bm_lewis"],
+}
+
+
+def synth(text, voice_arg, speed, pitch):
+    with tempfile.TemporaryDirectory(prefix="vlab-") as td:
+        wav = Path(td) / "out.wav"
+        r = subprocess.run(
+            ["kokoro-tts", "/dev/stdin", str(wav),
+             "--model", str(MODELS / "kokoro-v1.0.onnx"),
+             "--voices", str(MODELS / "voices-v1.0.bin"),
+             "--voice", voice_arg, "--speed", str(speed)],
+            input=text.encode(), capture_output=True, timeout=120)
+        if r.returncode != 0 or not wav.exists():
+            raise RuntimeError(r.stderr.decode(errors="replace")[-300:])
+        if abs(pitch) >= 0.05:
+            factor = math.pow(2, pitch / 12)
+            shifted = Path(td) / "shifted.wav"
+            r = subprocess.run(
+                ["ffmpeg", "-y", "-loglevel", "error", "-i", str(wav),
+                 "-af", f"asetrate=24000*{factor:.6f},aresample=24000,atempo={1/factor:.6f}",
+                 str(shifted)], capture_output=True, timeout=120)
+            if r.returncode != 0:
+                raise RuntimeError(r.stderr.decode(errors="replace")[-300:])
+            wav = shifted
+        return wav.read_bytes()
+
+
+PAGE = """<!doctype html><html><head><meta charset="utf-8"><title>Donna Voice Lab</title>
+<style>
+:root{--bg:#12131a;--card:#1c1e2a;--ink:#e6e6f0;--dim:#8b8da0;--acc:#7aa2f7;--ok:#9ece6a}
+*{box-sizing:border-box;font-family:ui-monospace,monospace}
+body{background:var(--bg);color:var(--ink);margin:0;padding:24px;max-width:880px;margin-inline:auto}
+h1{font-size:20px}h2{font-size:13px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin:18px 0 8px}
+.card{background:var(--card);border-radius:10px;padding:16px;margin-bottom:14px}
+.vgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px}
+.vbtn{background:#262939;border:1px solid #333;color:var(--ink);border-radius:6px;padding:6px 4px;cursor:pointer;font-size:12px}
+.vbtn.sel{border-color:var(--acc);color:var(--acc)}
+.slider-row{display:flex;align-items:center;gap:10px;margin:10px 0}
+.slider-row label{width:130px;font-size:13px}
+.slider-row output{width:52px;text-align:right;font-size:13px;color:var(--acc)}
+input[type=range]{flex:1;accent-color:var(--acc)}
+textarea{width:100%;background:#262939;border:1px solid #333;color:var(--ink);border-radius:6px;padding:10px;font-size:14px;min-height:60px}
+button{background:var(--acc);border:0;color:#12131a;font-weight:700;border-radius:6px;padding:10px 18px;cursor:pointer;font-size:14px}
+button.save{background:var(--ok)}
+#status{color:var(--dim);font-size:13px;margin-left:10px}
+</style></head><body>
+<h1>Donna Voice Lab</h1>
+<div class="card"><h2>Voices - pick up to 4, blend with weights</h2><div id="voices"></div><div id="weights"></div></div>
+<div class="card"><h2>Dials</h2>
+<div class="slider-row"><label>Speed</label><input type="range" id="speed" min="0.6" max="1.6" step="0.05" value="1.0" oninput="upd()"><output id="speedv">1.00</output></div>
+<div class="slider-row"><label>Pitch (semitones)</label><input type="range" id="pitch" min="-5" max="5" step="0.5" value="0" oninput="upd()"><output id="pitchv">0.0</output></div>
+</div>
+<div class="card"><h2>Test</h2>
+<textarea id="text">Good morning Prasanth. Three meetings today, and the Harbor release is waiting on your review.</textarea>
+<div style="margin-top:10px"><button onclick="speak()">Speak</button>
+<button class="save" onclick="save()">Save as Donna's voice</button><span id="status"></span></div>
+<audio id="player"></audio></div>
+<script>
+const GROUPS = __VOICES__;
+let sel = {};   // name -> weight
+function render(){
+  const v = document.getElementById('voices'); v.innerHTML='';
+  for (const [group, names] of Object.entries(GROUPS)){
+    const h = document.createElement('h2'); h.textContent = group; v.appendChild(h);
+    const g = document.createElement('div'); g.className='vgrid';
+    for (const n of names){
+      const b = document.createElement('button'); b.className='vbtn'+(sel[n]!==undefined?' sel':'');
+      b.textContent = n.split('_')[1]; b.title = n;
+      b.onclick = () => { if (sel[n]!==undefined) delete sel[n];
+        else { if (Object.keys(sel).length>=4) return; sel[n]=50; } render(); };
+      g.appendChild(b);
+    } v.appendChild(g);
+  }
+  const w = document.getElementById('weights'); w.innerHTML='';
+  for (const [n, wt] of Object.entries(sel)){
+    const row = document.createElement('div'); row.className='slider-row';
+    row.innerHTML = `<label>${n}</label><input type="range" min="1" max="100" value="${wt}"><output>${wt}</output>`;
+    const r = row.querySelector('input');
+    r.oninput = () => { sel[n]=+r.value; row.querySelector('output').textContent=r.value; };
+    w.appendChild(row);
+  }
+}
+function upd(){
+  document.getElementById('speedv').textContent = (+speed.value).toFixed(2);
+  document.getElementById('pitchv').textContent = (+pitch.value).toFixed(1);
+}
+function voiceArg(){
+  const e = Object.entries(sel);
+  if (!e.length) return 'af_sarah';
+  if (e.length===1) return e[0][0];
+  return e.map(([n,w])=>`${n}:${w}`).join(',');
+}
+async function speak(){
+  status.textContent = 'synthesizing...';
+  const r = await fetch('/synth', {method:'POST', body: JSON.stringify({
+    text: text.value, voice: voiceArg(), speed:+speed.value, pitch:+pitch.value})});
+  if (!r.ok){ status.textContent = 'error: ' + await r.text(); return; }
+  const blob = await r.blob();
+  player.src = URL.createObjectURL(blob); player.play();
+  status.textContent = 'playing - ' + voiceArg();
+}
+async function save(){
+  const r = await fetch('/save', {method:'POST', body: JSON.stringify({
+    voice: voiceArg(), speed:+speed.value, pitch:+pitch.value})});
+  status.textContent = r.ok ? 'saved - this is Donna now' : 'save failed';
+}
+async function load(){
+  const r = await fetch('/current'); const c = await r.json();
+  if (c.voice) for (const part of c.voice.split(',')){
+    const [n,w] = part.split(':'); sel[n] = w?+w:50;
+  }
+  if (c.speed) speed.value = c.speed;
+  if (c.pitch) pitch.value = c.pitch;
+  render(); upd();
+}
+load();
+</script></body></html>"""
+
+
+class Handler(BaseHTTPRequestHandler):
+    def log_message(self, *a):
+        pass
+
+    def _send(self, code, body, ctype="text/plain"):
+        self.send_response(code)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_GET(self):
+        if self.path == "/":
+            page = PAGE.replace("__VOICES__", json.dumps(VOICES))
+            self._send(200, page.encode(), "text/html; charset=utf-8")
+        elif self.path == "/current":
+            cfg = {}
+            if VOICE_ENV.is_file():
+                for line in VOICE_ENV.read_text().splitlines():
+                    if "=" in line and not line.startswith("#"):
+                        k, v = line.split("=", 1)
+                        cfg[k.strip()] = v.strip()
+            self._send(200, json.dumps({
+                "voice": cfg.get("SPEAK_VOICE", ""),
+                "speed": cfg.get("SPEAK_SPEED", ""),
+                "pitch": cfg.get("SPEAK_PITCH", ""),
+            }).encode(), "application/json")
+        else:
+            self._send(404, b"not found")
+
+    def do_POST(self):
+        body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+        if self.path == "/synth":
+            try:
+                wav = synth(body["text"][:600], body["voice"],
+                            max(0.5, min(2.0, body["speed"])),
+                            max(-6, min(6, body["pitch"])))
+                self._send(200, wav, "audio/wav")
+            except Exception as e:
+                self._send(500, str(e).encode())
+        elif self.path == "/save":
+            VOICE_ENV.parent.mkdir(parents=True, exist_ok=True)
+            VOICE_ENV.write_text(
+                "# Donna's voice - written by voicelab, read by speak\n"
+                f"SPEAK_VOICE={body['voice']}\n"
+                f"SPEAK_SPEED={body['speed']}\n"
+                f"SPEAK_PITCH={body['pitch']}\n")
+            self._send(200, b"ok")
+        else:
+            self._send(404, b"not found")
+
+
+def main(argv):
+    if argv and argv[0] in ("-h", "--help"):
+        print(__doc__)
+        return 0
+    port = int(argv[argv.index("--port") + 1]) if "--port" in argv else 7777
+    srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    print(f"voicelab: http://127.0.0.1:{port}  (Ctrl+C to stop)")
+    try:
+        srv.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
