@@ -7,9 +7,13 @@
     "PandaKB.COM Corne V3 Keyboard"
   ],
   "audio_device_name": "alsa_input.usb-0c76_USB_PnP_Audio_Device-00.mono-fallback",
-  "model": "large-v3-turbo",
-  "transcription_backend": "nvidia",
+  "model": "small",
+  "transcription_backend": "faster-whisper",
   "audio_ducking": true,
   "post_transcription_hook": "/home/bupd/bin/hyprwhspr-history-hook",
-  "clipboard_clear_delay": 3600
+  "clipboard_clear_delay": 3600,
+  "faster_whisper_model": "small",
+  "faster_whisper_device": "auto",
+  "faster_whisper_compute_type": "auto",
+  "faster_whisper_vad_filter": true
 }
