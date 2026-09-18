@@ -45,6 +45,9 @@ INBOX = VAULT / "donna" / "discord-inbox.md"
 ENV_FILE = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "donna" / "discord.env"
 STATE_DIR = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "donna"
 STATE_FILE = STATE_DIR / "discordwatch.json"
+# marker for the "Donna relay is down" alert: its mtime rate-limits repeat
+# ntfy pings; its presence means we already alerted, so recovery pings once
+RELAY_ALERT = STATE_DIR / "relay-alert.stamp"
 CACHE = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "donna" / "discord"
 # attachments (images, receipts, PDFs) are kept, unlike transient voice audio,
 # so Donna can Read the file after the fact
@@ -52,6 +55,7 @@ ATTACH = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / 
 API = "https://discord.com/api/v10"
 AGENT = "donna"
 POLL_SECS = 20
+ALERT_COOLDOWN = 1800  # seconds between repeat "relay down" ntfy pings
 MAX_AUDIO_BYTES = 50 * 1024 * 1024
 CHECK = "👀"
 WARN = "⚠️"
@@ -215,12 +219,58 @@ def append_inbox(kind, author, where, text):
         f.write(entry)
 
 
+def ntfy(msg):
+    """Push a phone alert. Best-effort: never let a notify failure break a poll."""
+    try:
+        subprocess.run(["ntfy", "publish", "bupd_agents", msg],
+                       capture_output=True, text=True, timeout=20)
+    except (FileNotFoundError, OSError, subprocess.SubprocessError) as e:
+        log(f"ntfy failed: {e}")
+
+
+def agent_missing(stderr):
+    """True when herdr rejected the prompt because the agent target is gone.
+    Donna's herdr session id rotates on restart, clearing the 'donna' name;
+    herdr then answers with code=agent_not_found and discordwatch's relay
+    dies silently. Match the structured code, fall back to a substring."""
+    try:
+        return json.loads(stderr).get("error", {}).get("code") == "agent_not_found"
+    except (json.JSONDecodeError, AttributeError, TypeError):
+        return "agent_not_found" in stderr
+
+
+def alert_relay_down(detail):
+    """ntfy once when the relay goes down, then at most every ALERT_COOLDOWN
+    while it stays down, so a burst of stuck messages is one ping, not many."""
+    now = time.time()
+    try:
+        last = RELAY_ALERT.stat().st_mtime
+    except FileNotFoundError:
+        last = 0
+    if now - last < ALERT_COOLDOWN:
+        return
+    RELAY_ALERT.parent.mkdir(parents=True, exist_ok=True)
+    RELAY_ALERT.write_text(str(now))
+    ntfy(f"Donna relay DOWN: herdr agent '{AGENT}' not found. Discord "
+         f"messages are hitting the inbox unprocessed. Re-register the agent "
+         f"in herdr to restore. ({detail[:80]})")
+    log(f"ALERTED: relay down, {AGENT} not found in herdr")
+
+
 def prompt_donna(text):
     r = subprocess.run(["herdr", "agent", "prompt", AGENT, text],
                        capture_output=True, text=True, timeout=60)
-    if r.returncode != 0:
-        log(f"herdr prompt failed: {r.stderr.strip()[:160]}")
-    return r.returncode == 0
+    if r.returncode == 0:
+        if RELAY_ALERT.exists():           # was down, we alerted, now delivering
+            RELAY_ALERT.unlink(missing_ok=True)
+            ntfy(f"Donna relay back up: discordwatch is reaching '{AGENT}' again.")
+            log("relay recovered")
+        return True
+    err = r.stderr.strip()
+    log(f"herdr prompt failed: {err[:160]}")
+    if agent_missing(err):
+        alert_relay_down(err)
+    return False
 
 
 def load_state():
