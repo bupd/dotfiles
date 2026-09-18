@@ -1,6 +1,7 @@
 [Unit]
 Description=Donna: Discord voice/text inbox (discordwatch)
 Documentation=file:///var/home/bupd/obsidian/donna/bin/discordwatch
+Wants=network-online.target
 After=network-online.target
 
 [Service]

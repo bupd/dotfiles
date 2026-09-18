@@ -29,12 +29,14 @@ sets a watermark and skips history - old messages are never replayed.
 """
 import json
 import os
+import signal
 import subprocess
 import sys
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 
@@ -83,6 +85,33 @@ def csv_ids(raw):
     return [x.strip() for x in (raw or "").split(",") if x.strip()]
 
 
+class Wedged(Exception):
+    """A blocking call overran its hard deadline (see deadline())."""
+
+
+@contextmanager
+def deadline(seconds, what):
+    """Hard wall-clock cap on a blocking call, via SIGALRM.
+
+    urllib's timeout= governs the socket (connect/read) but NOT DNS: name
+    resolution happens in getaddrinfo before the socket exists and honors only
+    the system resolver's own timeouts. When the resolver is half-up (accepting
+    queries, not answering) getaddrinfo can block indefinitely, wedging the poll
+    loop with no timeout to trip and no crash for Restart=on-failure to catch -
+    which is exactly how a boot-time DNS blip once killed this daemon silently
+    for an hour. This bounds any single network call so a wedge can never
+    outlive one poll. Main-thread + Linux only; this daemon is both."""
+    def _fire(_signum, _frame):
+        raise Wedged(what)
+    prev = signal.signal(signal.SIGALRM, _fire)
+    signal.setitimer(signal.ITIMER_REAL, seconds)
+    try:
+        yield
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, prev)
+
+
 def api(token, method, path, body=None):
     """One Discord REST call. Returns (status, parsed-json-or-None).
     Waits out a 429 once; other errors are returned, not raised."""
@@ -95,7 +124,8 @@ def api(token, method, path, body=None):
             data = json.dumps(body).encode()
             req.add_header("Content-Type", "application/json")
         try:
-            with urllib.request.urlopen(req, data=data, timeout=30) as r:
+            with deadline(45, f"{method} {path}"), \
+                    urllib.request.urlopen(req, data=data, timeout=30) as r:
                 raw = r.read()
                 return r.status, (json.loads(raw) if raw.strip() else None)
         except urllib.error.HTTPError as e:
@@ -107,6 +137,9 @@ def api(token, method, path, body=None):
                 time.sleep(min(wait, 30))
                 continue
             return e.code, None
+        except Wedged as e:
+            log(f"api {method} {path}: wedged past 45s (DNS/connect stall), aborting: {e}")
+            return 0, None
         except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as e:
             log(f"api {method} {path}: {e}")
             return 0, None
@@ -117,7 +150,8 @@ def download(token, url, dest):
     req = urllib.request.Request(url)
     req.add_header("User-Agent", "donna-discordwatch/1.0")
     try:
-        with urllib.request.urlopen(req, timeout=120) as r, open(dest, "wb") as f:
+        with deadline(150, "download"), \
+                urllib.request.urlopen(req, timeout=120) as r, open(dest, "wb") as f:
             copied = 0
             while chunk := r.read(1 << 16):
                 copied += len(chunk)
@@ -125,7 +159,7 @@ def download(token, url, dest):
                     return False
                 f.write(chunk)
         return True
-    except (urllib.error.URLError, TimeoutError, OSError) as e:
+    except (Wedged, urllib.error.URLError, TimeoutError, OSError) as e:
         log(f"download failed: {e}")
         return False
 
