@@ -59,7 +59,7 @@ briefs four minutes after boot.
 |---|---|
 | `discordwatch` | Watches Discord channels/DMs for Prasanth's messages. Voice notes are transcribed locally (ffmpeg → `hyprwhspr transcribe`, whisper.cpp on CUDA, ~1s per note), text passes through. Every message lands in `donna/discord-inbox.md`, goes to Donna via `herdr agent prompt`, gets a ✅ reaction, and voice notes get the transcript as a reply. `once` and `status` subcommands for testing. |
 
-| `discordsend` | The reply side: `discordsend "text"` posts to Discord as Donna. Default target is the channel the last inbound message came from (falls back to first `DISCORD_CHANNELS` entry); `--channel ID` overrides; stdin works. Splits >1900 chars, never pings, prints the message id. |
+| `discordsend` | The reply side: `discordsend "text"` posts to Discord as Donna. Default target is the channel the last inbound message came from (falls back to first `DISCORD_CHANNELS` entry); `--channel ID` overrides; stdin works. Splits >1900 chars, never pings, prints the message id. `--file PATH` (repeatable) attaches files via multipart; audio over Discord's 10 MB non-boosted limit is auto-transcoded to a fitting mono mp3 (`--no-compress` opts out, `DISCORD_UPLOAD_LIMIT_MB` raises the ceiling for a boosted server). |
 
 Runs as `donna-infra-discord.service` (long-running daemon, 20s poll, enabled).
 Config in `~/.config/donna/discord.env` (chmod 600): `DISCORD_BOT_TOKEN`,
@@ -114,6 +114,12 @@ models (~350MB) live in `~/.local/share/kokoro-tts/`. No account, no token,
 fully offline.
 
 ## Notion access
+
+| Script | What it does |
+|---|---|
+| `notiontask` | Read and manage the Notion task board from the CLI over the official API: `list`/`get`/`search`/`props` to read, `create`/`update`/`status` to write. `--set Property=value` pairs are typed from the live DB schema. Reads `NOTION_TOKEN` + `NOTION_TASKS_DB` from `~/.notcrawl/env`. Donna drives this via the `notion-tasks` skill; she never writes API code. |
+| `notionpull` | Read-only fallback: queue a Notion page URL, Claude captures the rendered page through the logged-in browser session into the vault. No token, no API - used while API access is unprovisioned. |
+
 
 | Script | What it does |
 |---|---|

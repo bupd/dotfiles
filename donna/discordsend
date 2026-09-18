@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""discordsend - post a message to Discord as Donna.
+"""discordsend - post a message (and files) to Discord as Donna.
 
-usage: discordsend [--channel ID] <text...>
+usage: discordsend [--channel ID] [--file PATH ...] [<text...>]
        echo text | discordsend [--channel ID]
 
 The send-side counterpart to discordwatch: same bot token, same config
@@ -11,26 +11,51 @@ The send-side counterpart to discordwatch: same bot token, same config
   2. the channel the last inbound message came from (discordwatch state)
   3. the first entry in DISCORD_CHANNELS
 
-Long text is split at 1900 chars per message. Mentions never ping.
-Prints the message id on success; errors go to stderr, exit 1.
+Text is optional when a file is attached. Long text is split at 1900 chars
+per message. Mentions never ping. Prints the message id on success.
+
+Files upload via multipart (payload_json + files[N]). An audio file over
+Discord's upload limit (10 MB on a non-boosted server) is transcoded to a
+mono mp3 that fits before sending - --no-compress turns that off. Set
+DISCORD_UPLOAD_LIMIT_MB for a boosted server's higher ceiling.
 """
 import json
+import mimetypes
 import os
+import shutil
+import subprocess
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.request
+import uuid
 from pathlib import Path
 
 ENV_FILE = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "donna" / "discord.env"
 STATE_FILE = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "donna" / "discordwatch.json"
 API = "https://discord.com/api/v10"
 CHUNK = 1900
+LIMIT_MB = float(os.environ.get("DISCORD_UPLOAD_LIMIT_MB", "10"))
+LIMIT = int(LIMIT_MB * 1024 * 1024)
+# leave headroom for multipart framing + mp3 container overhead when sizing
+# a transcode, so a computed-to-fit bitrate does not land just over the wire
+TARGET = int(LIMIT * 0.92)
+AUDIO_EXTS = {".wav", ".mp3", ".m4a", ".aac", ".ogg", ".oga", ".opus",
+              ".flac", ".wma", ".aiff", ".aif", ".mka"}
 
 
 def die(msg):
     print(f"discordsend: {msg}", file=sys.stderr)
     sys.exit(1)
+
+
+def note(msg):
+    print(f"discordsend: {msg}", file=sys.stderr)
+
+
+def mb(n):
+    return f"{n / 1024 / 1024:.1f}MB"
 
 
 def load_env():
@@ -47,17 +72,83 @@ def load_env():
     return cfg
 
 
-def post(token, channel, content):
-    body = json.dumps({"content": content,
-                       "allowed_mentions": {"parse": []}}).encode()
+def audio_duration(path):
+    """Seconds of audio via ffprobe, or None if it is not decodable audio."""
+    try:
+        r = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+             "-of", "default=noprint_wrappers=1:nokey=1", str(path)],
+            capture_output=True, text=True, timeout=60)
+        return float(r.stdout.strip())
+    except (FileNotFoundError, ValueError, subprocess.SubprocessError):
+        return None
+
+
+def compress_audio(path, target_bytes):
+    """Transcode to a mono mp3 sized to fit target_bytes. Bitrate is derived
+    from duration so a CBR mp3 lands under target - capped at 64k (ample for
+    speech) and floored at 16k (rough but intelligible for long voice). The
+    caller re-checks the result size: an hours-long file can still overrun
+    even at the floor. Returns the new Path, or None if it can't transcode."""
+    dur = audio_duration(path)
+    if not dur or dur <= 0:
+        return None
+    budget_kbps = (target_bytes * 8) / dur / 1000
+    rate = max(16, min(64, int(budget_kbps)))
+    out = Path(tempfile.mkdtemp(prefix="discordsend-")) / (Path(path).stem + ".mp3")
+    r = subprocess.run(
+        ["ffmpeg", "-nostdin", "-y", "-i", str(path),
+         "-ac", "1", "-c:a", "libmp3lame", "-b:a", f"{rate}k",
+         "-f", "mp3", str(out)],
+        capture_output=True, text=True, timeout=600)
+    if r.returncode != 0 or not out.is_file():
+        note(f"ffmpeg failed on {path}: {r.stderr.strip()[-200:] if r.stderr else '?'}")
+        return None
+    return out
+
+
+def prepare_files(paths, no_compress):
+    """Resolve each --file to something sendable, shrinking oversized audio.
+    Returns (list-of-paths-to-send, list-of-temp-dirs-to-clean)."""
+    ready, tmpdirs = [], []
+    for p in paths:
+        f = Path(p).expanduser()
+        if not f.is_file():
+            die(f"no such file: {p}")
+        size = f.stat().st_size
+        if size <= LIMIT:
+            ready.append(f)
+            continue
+        if no_compress:
+            die(f"{f.name} is {mb(size)}, over the {LIMIT_MB:g}MB limit (--no-compress set)")
+        if f.suffix.lower() not in AUDIO_EXTS:
+            die(f"{f.name} is {mb(size)}, over the {LIMIT_MB:g}MB limit and not audio "
+                f"- can't auto-compress. Shrink it yourself or boost the server.")
+        out = compress_audio(f, TARGET)
+        if not out:
+            die(f"{f.name} is {mb(size)}, over the {LIMIT_MB:g}MB limit and ffmpeg "
+                f"could not transcode it.")
+        tmpdirs.append(out.parent)
+        newsize = out.stat().st_size
+        if newsize > LIMIT:
+            for d in tmpdirs:
+                shutil.rmtree(d, ignore_errors=True)
+            die(f"{f.name} is still {mb(newsize)} at the lowest voice bitrate "
+                f"- too long for one {LIMIT_MB:g}MB attachment. Split it.")
+        note(f"compressed {f.name} {mb(size)} -> {out.name} {mb(newsize)} (mono mp3)")
+        ready.append(out)
+    return ready, tmpdirs
+
+
+def _request(token, channel, data, content_type):
     for attempt in (1, 2):
         req = urllib.request.Request(
-            f"{API}/channels/{channel}/messages", data=body, method="POST")
+            f"{API}/channels/{channel}/messages", data=data, method="POST")
         req.add_header("Authorization", f"Bot {token}")
-        req.add_header("Content-Type", "application/json")
+        req.add_header("Content-Type", content_type)
         req.add_header("User-Agent", "donna-discordsend/1.0")
         try:
-            with urllib.request.urlopen(req, timeout=30) as r:
+            with urllib.request.urlopen(req, timeout=120) as r:
                 return json.loads(r.read())["id"]
         except urllib.error.HTTPError as e:
             if e.code == 429 and attempt == 1:
@@ -77,19 +168,68 @@ def post(token, channel, content):
             die(f"network error: {e}")
 
 
+def post(token, channel, content):
+    body = json.dumps({"content": content,
+                       "allowed_mentions": {"parse": []}}).encode()
+    return _request(token, channel, body, "application/json")
+
+
+def post_files(token, channel, content, files):
+    """One multipart message: payload_json + files[N], per Discord's API."""
+    payload = {"allowed_mentions": {"parse": []},
+               "attachments": [{"id": i, "filename": f.name}
+                               for i, f in enumerate(files)]}
+    if content:
+        payload["content"] = content
+    boundary = "----donna" + uuid.uuid4().hex
+    out = bytearray()
+
+    def part(header, body_bytes, ctype):
+        out.extend(f"--{boundary}\r\n".encode())
+        out.extend(header.encode())
+        out.extend(f"\r\nContent-Type: {ctype}\r\n\r\n".encode())
+        out.extend(body_bytes)
+        out.extend(b"\r\n")
+
+    part('Content-Disposition: form-data; name="payload_json"',
+         json.dumps(payload).encode(), "application/json")
+    for i, f in enumerate(files):
+        ctype = mimetypes.guess_type(f.name)[0] or "application/octet-stream"
+        safe = f.name.replace('"', "")
+        part(f'Content-Disposition: form-data; name="files[{i}]"; filename="{safe}"',
+             f.read_bytes(), ctype)
+    out.extend(f"--{boundary}--\r\n".encode())
+    return _request(token, channel, bytes(out),
+                    f"multipart/form-data; boundary={boundary}")
+
+
 def main(argv):
     if argv and argv[0] in ("-h", "--help"):
         print(__doc__)
         return 0
-    channel = None
-    if argv and argv[0] == "--channel":
-        if len(argv) < 2:
-            die("--channel needs an ID")
-        channel = argv[1]
-        argv = argv[2:]
 
-    text = " ".join(argv).strip() if argv else sys.stdin.read().strip()
-    if not text:
+    channel = None
+    files = []
+    no_compress = False
+    rest = []
+    it = iter(argv)
+    for a in it:
+        if a == "--channel":
+            channel = next(it, None) or die("--channel needs an ID")
+        elif a == "--file":
+            files.append(next(it, None) or die("--file needs a PATH"))
+        elif a == "--no-compress":
+            no_compress = True
+        else:
+            rest.append(a)
+
+    if rest:
+        text = " ".join(rest).strip()
+    elif files:
+        text = ""              # a file with no caption is fine
+    else:
+        text = sys.stdin.read().strip()
+    if not text and not files:
         die("nothing to send")
 
     cfg = load_env()
@@ -108,8 +248,23 @@ def main(argv):
     if not channel:
         die("no channel: pass --channel, or set DISCORD_CHANNELS")
 
-    for i in range(0, len(text), CHUNK):
-        mid = post(token, channel, text[i:i + CHUNK])
+    mid = None
+    if files:
+        ready, tmpdirs = prepare_files(files, no_compress)
+        try:
+            # attachments ride the first message; overflow text follows as
+            # plain messages so nothing over 1900 chars is dropped
+            head, tail = (text[:CHUNK], text[CHUNK:]) if text else ("", "")
+            mid = post_files(token, channel, head, ready)
+            for i in range(0, len(tail), CHUNK):
+                mid = post(token, channel, tail[i:i + CHUNK])
+        finally:
+            for d in tmpdirs:
+                shutil.rmtree(d, ignore_errors=True)
+    else:
+        for i in range(0, len(text), CHUNK):
+            mid = post(token, channel, text[i:i + CHUNK])
+
     print(mid)
     return 0
 
