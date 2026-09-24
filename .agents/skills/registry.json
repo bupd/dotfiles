@@ -59,6 +59,7 @@
         "remotion-best-practices",
         "setup-matt-pocock-skills",
         "skill-creator",
+        "smart-goals",
         "systemd",
         "taskfile",
         "tdd",
@@ -266,6 +267,10 @@
     {
       "name": "skill-creator",
       "path": "~/.agents/skills/skill-creator/SKILL.md"
+    },
+    {
+      "name": "smart-goals",
+      "path": "~/.agents/skills/smart-goals/SKILL.md"
     },
     {
       "name": "systemd",

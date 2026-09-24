@@ -32,3 +32,9 @@ Installed from `mattpocock/skills`:
 - `prototype` - Build throwaway prototypes for logic or UI questions.
 - `github-actions-taskfile` - Write thin GitHub Actions CI/CD workflows that call Taskfile tasks.
 - `git-worktree-management` - Manage Git worktrees, bare layouts, branch sync, cleanup, and recovery.
+
+## Local Skills
+
+Written here, not installed from an upstream source:
+
+- `smart-goals` - Rewrite a goal or task into SMART form, then create it on the Notion board with `notiontask`, or in the Obsidian vault when Notion credentials are missing.
