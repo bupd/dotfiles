@@ -24,6 +24,7 @@ dotfiles/
     i3status/      # i3 status bar
     kitty/         # Kitty terminal
     lazygit/       # Lazygit config
+    btop/          # btop (200ms refresh instead of default 2500ms)
     xremap/        # Key remapping
     yt-dlp/        # yt-dlp config
   bootc/           # Arch Linux bootc image for Hetzner Cloud (not stowed)
