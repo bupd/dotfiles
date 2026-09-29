@@ -1,0 +1,10 @@
+id = "bupd.agent-notify"
+name = "Agent Notify"
+version = "0.1.0"
+min_herdr_version = "0.9.5"
+description = "dunst popup when an agent finishes or needs input"
+platforms = ["linux"]
+
+[[events]]
+on = "pane.agent_status_changed"
+command = ["./notify.sh"]

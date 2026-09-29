@@ -4,3 +4,32 @@ default_shell = "/usr/bin/zsh"
 
 [ui]
 agent_panel_sort = "spaces"
+
+# Agent rows: agent name bold up top, space · tab dimmed below,
+# space name color-coded per space (needs herdr >= 0.9.1)
+[ui.sidebar.agents]
+rows = [
+    ["state_icon", { token = "agent", bold = true }],
+    [{ token = "workspace", dim = true, rules = [
+        { equals = "harbor", fg = "#89b4fa" },
+        { equals = "deployment", fg = "#94e2d5" },
+        { equals = "rpi", fg = "#fab387" },
+        { equals = "donna", fg = "#cba6f7" },
+    ] }, { token = "tab", dim = true }],
+]
+
+# Space rows: same per-space palette as the agent rows
+[ui.sidebar.spaces]
+rows = [
+    ["state_icon", { token = "workspace", bold = true, rules = [
+        { equals = "harbor", fg = "#89b4fa" },
+        { equals = "deployment", fg = "#94e2d5" },
+        { equals = "rpi", fg = "#fab387" },
+        { equals = "donna", fg = "#cba6f7" },
+    ] }],
+    ["branch", "git_status"],
+]
+
+# Desktop popups (dunst) on agent done/blocked come from the local plugin in
+# plugins/agent-notify, not [ui.toast]. Register once per machine:
+#   herdr plugin link ~/dotfiles/.config/herdr/plugins/agent-notify
