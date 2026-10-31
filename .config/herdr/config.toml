@@ -5,6 +5,14 @@ default_shell = "/usr/bin/zsh"
 [ui]
 agent_panel_sort = "spaces"
 
+# Kanagawa base; focused Agent / active Space row in deep ember so the
+# selected pane stands out while dimmed row text stays readable
+[theme]
+name = "kanagawa"
+
+[theme.custom]
+active_row_bg = "#6e3a24"
+
 # Agent rows: agent name bold up top, space · tab dimmed below,
 # space name color-coded per space (needs herdr >= 0.9.1)
 [ui.sidebar.agents]
