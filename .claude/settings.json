@@ -2,7 +2,7 @@
   "env": {
     "SHELL": "/usr/bin/zsh"
   },
-  "model": "claude-fable-5-1[1m]",
+  "model": "claude-fable-5-1",
   "hooks": {
     "SessionStart": [
       {
@@ -14,6 +14,16 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash '/home/bupd/.claude/hooks/herdr-compact-on-resume.sh'",
+            "timeout": 10
+          }
+        ]
       }
     ]
   },
@@ -22,6 +32,11 @@
     "command": "~/.claude/statusline.sh"
   },
   "effortLevel": "high",
+  "modelSettings": {
+    "claude-opus-5": {
+      "effortLevel": "high"
+    }
+  },
   "voice": {
     "enabled": true,
     "mode": "hold"
@@ -29,5 +44,7 @@
   "skipDangerousModePermissionPrompt": true,
   "theme": "dark",
   "verbose": true,
-  "voiceEnabled": true
+  "switchModelsOnFlag": false,
+  "voiceEnabled": true,
+  "remoteControlAtStartup": true
 }
