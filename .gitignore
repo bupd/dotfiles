@@ -50,4 +50,9 @@ identity-backup/.*.partial.zip
 # Claude Code runtime junk - regenerated, never commit
 .claude/telemetry/
 .claude/stats-cache.json
+# Synced from the claude.ai account (third-party licensed), plus per-machine MCP state and feedback drafts
+.claude/skills/synced/
+.claude/mcp-needs-auth-cache.json
+.claude/state/
+.claude/feedback/
 __pycache__/

@@ -36,7 +36,7 @@
     "window-rewrite-default": "",
     "window-rewrite": {
       "class<Chromium|chromium>": "",
-      "class<Brave-browser|brave-browser>": "",
+      "class<Brave-browser|brave-browser>": "<span font_family='Font Awesome 6 Brands' size='72%'></span>",
       "class<Google-chrome|google-chrome>": "",
       "class<firefox|org.mozilla.firefox>": "",
       "class<com.mitchellh.ghostty|ghostty|Xfce4-terminal|kitty|Alacritty>": "",
