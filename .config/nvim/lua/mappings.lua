@@ -64,10 +64,16 @@ map("n", "<leader>gtd", function()
 end, { desc = "Toggle deleted" })
 
 -- General mappings
-map("n", "<C-h>", "<cmd> TmuxNavigateLeft<CR>", { desc = "window left" })
-map("n", "<C-l>", "<cmd> TmuxNavigateRight<CR>", { desc = "window right" })
-map("n", "<C-j>", "<cmd> TmuxNavigateDown<CR>", { desc = "window down" })
-map("n", "<C-k>", "<cmd> TmuxNavigateUp<CR>", { desc = "window up" })
+-- <C-h/j/k/l>: herdr panes + nvim splits (falls back to tmux/wincmd outside herdr)
+local herdr_nav = vim.fn.expand("~/code/OSS/vim-herdr-navigation/editor/nvim.lua")
+if vim.fn.filereadable(herdr_nav) == 1 then
+  dofile(herdr_nav)
+else
+  map("n", "<C-h>", "<cmd> TmuxNavigateLeft<CR>", { desc = "window left" })
+  map("n", "<C-l>", "<cmd> TmuxNavigateRight<CR>", { desc = "window right" })
+  map("n", "<C-j>", "<cmd> TmuxNavigateDown<CR>", { desc = "window down" })
+  map("n", "<C-k>", "<cmd> TmuxNavigateUp<CR>", { desc = "window up" })
+end
 
 -- Toggle undotree
 map("n", "<leader>u", "<cmd> UndotreeToggle <CR>", { desc = "Toggle undotree" })
