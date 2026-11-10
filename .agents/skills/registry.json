@@ -31,6 +31,7 @@
         "angular-testing",
         "angular-tooling",
         "article-writer",
+        "aur-maintain",
         "bencium-controlled-ux-designer",
         "bencium-impact-designer",
         "bencium-innovative-ux-designer",
@@ -50,6 +51,7 @@
         "grill-with-docs",
         "handoff",
         "helm-chart",
+        "herdr",
         "improve-codebase-architecture",
         "jj",
         "neovim-pr-review",
@@ -68,6 +70,7 @@
         "to-prd",
         "triage",
         "typography",
+        "unslopify",
         "write-a-skill",
         "youtube-analyze",
         "zoom-out"
@@ -157,6 +160,10 @@
       "path": "~/.agents/skills/article-writer/SKILL.md"
     },
     {
+      "name": "aur-maintain",
+      "path": "~/.agents/skills/aur-maintain/SKILL.md"
+    },
+    {
       "name": "bencium-controlled-ux-designer",
       "path": "~/.agents/skills/bencium-controlled-ux-designer/SKILL.md"
     },
@@ -237,12 +244,20 @@
       "path": "~/.agents/skills/helm-chart/SKILL.md"
     },
     {
+      "name": "herdr",
+      "path": "~/.agents/skills/herdr/SKILL.md"
+    },
+    {
       "name": "humanizer",
       "path": "~/.agents/skills/humanizer/SKILL.md"
     },
     {
       "name": "improve-codebase-architecture",
       "path": "~/.agents/skills/improve-codebase-architecture/SKILL.md"
+    },
+    {
+      "name": "jj",
+      "path": "~/.agents/skills/jj/SKILL.md"
     },
     {
       "name": "neovim-pr-review",
@@ -303,6 +318,10 @@
     {
       "name": "ui-typography",
       "path": "~/.agents/skills/typography/SKILL.md"
+    },
+    {
+      "name": "unslopify",
+      "path": "~/.agents/skills/unslopify/SKILL.md"
     },
     {
       "name": "write-a-skill",
