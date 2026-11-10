@@ -2,7 +2,7 @@
   "env": {
     "SHELL": "/usr/bin/zsh"
   },
-  "model": "claude-fable-5-1",
+  "model": "sonnet",
   "hooks": {
     "SessionStart": [
       {
@@ -43,8 +43,8 @@
   },
   "skipDangerousModePermissionPrompt": true,
   "theme": "dark",
-  "verbose": true,
+  "verbose": false,
   "switchModelsOnFlag": false,
-  "voiceEnabled": true,
-  "remoteControlAtStartup": true
+  "remoteControlAtStartup": true,
+  "voiceEnabled": true
 }
