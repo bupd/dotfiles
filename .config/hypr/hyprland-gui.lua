@@ -9,6 +9,15 @@ hl.config({
 
 -- Monitors
 hl.monitor({
+    output = "DP-1",
+    disabled = false,
+    mode = "1920x1080@143.98Hz",
+    position = "0x0",
+    scale = 1,
+    bitdepth = 10,
+    cm = "hdr",
+})
+hl.monitor({
     output = "HDMI-A-1",
     disabled = false,
     mode = "1920x1080@60.00Hz",
