@@ -16,6 +16,7 @@ hl.monitor({
     scale = 1,
     bitdepth = 10,
     cm = "hdr",
+    sdrbrightness = 0.9,
 })
 hl.monitor({
     output = "HDMI-A-1",
